@@ -3,32 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EcoSim: Environmental Management Tool</title>
+    <title>EcoSim: Tasmanian Environmental Management Tool</title>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- jsPDF for report generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary: #2E8B57;
+            --primary-dark: #1E5B37;
             --secondary: #3CB371;
             --light: #F5F5F5;
+            --lighter: #FAFAFA;
             --dark: #333;
+            --darker: #222;
+            --gray: #777;
+            --light-gray: #DDD;
+            --danger: #DC3545;
+            --warning: #FFC107;
+            --info: #17A2B8;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f9f9f9;
-            color: #333;
+            background-color: var(--lighter);
+            color: var(--dark);
+            line-height: 1.6;
         }
         header {
-            background-color: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
-            padding: 1rem;
+            padding: 1.5rem 1rem;
             text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .logo i {
+            font-size: 2rem;
         }
         .container {
             display: flex;
@@ -39,88 +65,334 @@
         }
         .main-content {
             display: flex;
-            gap: 1rem;
+            gap: 1.5rem;
             flex-wrap: wrap;
         }
         .sidebar {
             flex: 1;
             min-width: 300px;
             background: white;
-            border-radius: 8px;
-            padding: 1rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            height: fit-content;
         }
         .map-container {
             flex: 2;
             min-width: 400px;
             background: white;
-            border-radius: 8px;
-            padding: 1rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
         #map {
-            height: 400px;
+            height: 500px;
             width: 100%;
-            border-radius: 6px;
+            border-radius: 8px;
+            border: 1px solid var(--light-gray);
         }
         .step {
             margin-bottom: 1.5rem;
-            padding: 1rem;
+            padding: 1.25rem;
             background-color: var(--light);
-            border-radius: 5px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+        .step:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .step h3 {
+            margin-top: 0;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .step h3 i {
+            font-size: 1.2em;
         }
         button {
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.3s;
             margin: 0.25rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         button:hover {
-            background-color: var(--secondary);
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
         }
         button:disabled {
-            background-color: #ccc;
+            background-color: var(--light-gray);
+            color: var(--gray);
             cursor: not-allowed;
+            transform: none;
+        }
+        button.secondary {
+            background-color: var(--light);
+            color: var(--dark);
+        }
+        button.secondary:hover {
+            background-color: var(--light-gray);
+        }
+        button.danger {
+            background-color: var(--danger);
+        }
+        button.danger:hover {
+            background-color: #BB2D3B;
+        }
+        button.warning {
+            background-color: var(--warning);
+            color: var(--darker);
+        }
+        button.warning:hover {
+            background-color: #E0A800;
         }
         .report-section {
             margin-top: 2rem;
-            padding: 1rem;
+            padding: 1.5rem;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--primary);
         }
         .file-actions {
             display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
             flex-wrap: wrap;
         }
         .threat-item, .action-item {
-            margin-bottom: 0.5rem;
-            padding: 0.5rem;
+            margin-bottom: 0.75rem;
+            padding: 0.75rem;
             background: white;
-            border-radius: 4px;
-            border: 1px solid #ddd;
+            border-radius: 6px;
+            border: 1px solid var(--light-gray);
+            transition: all 0.2s;
+        }
+        .threat-item:hover, .action-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .coord-input {
-            margin: 0.5rem 0;
+            margin: 0.75rem 0;
         }
         .coord-input label {
             display: inline-block;
             min-width: 60px;
+            font-weight: 500;
         }
         .coord-input input {
-            width: 120px;
-            padding: 0.25rem;
+            width: 140px;
+            padding: 0.5rem;
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
         }
         .threat-description, .action-description {
+            font-size: 0.85em;
+            color: var(--gray);
+            margin-top: 0.4rem;
+            padding-left: 1.5rem;
+        }
+        .threat-severity, .action-cost, .action-time {
+            padding: 0.3rem;
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+        .remove-threat, .remove-action {
+            float: right;
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            padding: 0 0.3rem;
+            font-size: 1.2em;
+            line-height: 1;
+        }
+        .remove-threat:hover, .remove-action:hover {
+            color: #BB2D3B;
+            transform: scale(1.2);
+        }
+        select, input[type="text"], input[type="number"] {
+            padding: 0.5rem;
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            margin: 0.25rem 0;
+        }
+        select {
+            min-width: 200px;
+        }
+        label {
+            display: block;
+            margin: 0.5rem 0;
+            font-weight: 500;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: var(--light-gray);
+            border-radius: 5px;
+            margin: 1rem 0;
+        }
+        .progress-bar {
+            height: 10px;
+            background-color: var(--primary);
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--light-gray);
+            margin-right: 5px;
+        }
+        .status-complete {
+            background-color: var(--primary);
+        }
+        .status-active {
+            background-color: var(--warning);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid var(--light-gray);
+            margin-bottom: 1rem;
+        }
+        .tab {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+        }
+        .tab.active {
+            border-bottom: 3px solid var(--primary);
+            color: var(--primary);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .simulation-visual {
+            width: 100%;
+            height: 200px;
+            background-color: var(--light);
+            border-radius: 8px;
+            margin: 1rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .visual-bar {
+            position: absolute;
+            bottom: 0;
+            width: 30px;
+            background-color: var(--danger);
+            transition: all 1s ease;
+        }
+        .visual-bar.reduced {
+            background-color: var(--primary);
+        }
+        .visual-label {
+            position: absolute;
+            bottom: -25px;
             font-size: 0.8em;
-            color: #666;
-            margin-top: 0.2rem;
+            text-align: center;
+            width: 30px;
+        }
+        .visual-title {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-weight: bold;
+        }
+        .help-text {
+            font-size: 0.85em;
+            color: var(--gray);
+            margin-top: 0.25rem;
+        }
+        .toggle-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .toggle-content.expanded {
+            max-height: 1000px;
+        }
+        .toggle-button {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 0;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .toggle-button i {
+            transition: transform 0.3s;
+        }
+        .toggle-button.expanded i {
+            transform: rotate(90deg);
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            border-radius: 5px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.error {
+            background-color: var(--danger);
+        }
+        .toast.success {
+            background-color: var(--primary);
+        }
+        .toast.warning {
+            background-color: var(--warning);
+            color: var(--darker);
         }
         @media (max-width: 768px) {
             .main-content {
@@ -129,113 +401,290 @@
             .sidebar, .map-container {
                 min-width: 100%;
             }
+            #map {
+                height: 400px;
+            }
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>EcoSim Environmental Management Tool</h1>
-        <p>Assess, simulate, and manage Tasmanian/Australian ecosystems—100% in your browser</p>
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-leaf"></i>
+                <h1>EcoSim: Tasmanian Environmental Management Tool</h1>
+            </div>
+            <p>Assess, analyze, and manage Tasmanian ecosystems with this comprehensive planning tool</p>
+        </div>
     </header>
 
     <div class="container">
         <div class="file-actions">
-            <button id="newProject">New Project</button>
-            <button id="saveProject">Save Project</button>
-            <button id="loadProject">Load Project</button>
-            <button id="shareProject">Share Link</button>
+            <button id="newProject"><i class="fas fa-file"></i> New Project</button>
+            <button id="saveProject"><i class="fas fa-save"></i> Save Project</button>
+            <button id="loadProject"><i class="fas fa-folder-open"></i> Load Project</button>
+            <button id="shareProject"><i class="fas fa-share-alt"></i> Share Link</button>
+            <button id="helpButton" class="secondary"><i class="fas fa-question-circle"></i> Help</button>
         </div>
 
         <div class="main-content">
             <div class="sidebar">
                 <div class="step">
-                    <h3>1. User Level</h3>
-                    <select id="userLevel">
-                        <option value="community">Community Group</option>
-                        <option value="student">Student</option>
-                        <option value="professional">Professional</option>
-                    </select>
+                    <h3><i class="fas fa-user"></i> 1. User Profile</h3>
+                    <div class="form-group">
+                        <label for="userLevel">User Type:</label>
+                        <select id="userLevel">
+                            <option value="community">Community Group/Landcare</option>
+                            <option value="student">Student/Researcher</option>
+                            <option value="professional">Professional/Consultant</option>
+                            <option value="government">Government/Local Council</option>
+                        </select>
+                        <p class="help-text">This adjusts the complexity of recommendations and reporting</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="organization">Organization (optional):</label>
+                        <input type="text" id="organization" placeholder="e.g. Tasmanian Land Conservancy">
+                    </div>
                 </div>
 
                 <div class="step">
-                    <h3>2. Site Assessment</h3>
-                    <button id="startAssessment">Begin Assessment</button>
-                    <div id="assessmentForm" style="display: none; margin-top: 1rem;">
-                        <label>Project Name: <input type="text" id="projectName"></label><br>
-                        <label>Ecosystem Type: 
-                            <select id="ecosystemType">
-                                <option value="forest">Forest</option>
-                                <option value="wetland">Wetland</option>
-                                <option value="grassland">Grassland</option>
-                                <option value="urban">Urban</option>
-                                <option value="coastal">Coastal</option>
-                                <option value="alpine">Alpine</option>
-                                <option value="agricultural">Agricultural</option>
+                    <h3><i class="fas fa-map-marked-alt"></i> 2. Site Assessment</h3>
+                    <div class="form-group">
+                        <label for="projectName">Project Name:</label>
+                        <input type="text" id="projectName" placeholder="e.g. Huon Valley Restoration">
+                    </div>
+                    <div class="form-group">
+                        <label for="ecosystemType">Primary Ecosystem Type:</label>
+                        <select id="ecosystemType">
+                            <option value="">Select ecosystem...</option>
+                            <option value="wet-eucalypt">Wet Eucalypt Forest</option>
+                            <option value="rainforest">Temperate Rainforest</option>
+                            <option value="wetland">Wetland</option>
+                            <option value="grassland">Native Grassland</option>
+                            <option value="coastal">Coastal Heathland</option>
+                            <option value="alpine">Alpine Vegetation</option>
+                            <option value="riparian">Riparian Zone</option>
+                            <option value="agricultural">Agricultural Land</option>
+                            <option value="urban">Urban/Peri-urban</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div id="customQuestions"></div>
+                    <button id="startAssessment" class="secondary"><i class="fas fa-clipboard-check"></i> Begin Detailed Assessment</button>
+                    <div id="assessmentForm" class="toggle-content">
+                        <div class="form-group">
+                            <label>Site Size (hectares):</label>
+                            <input type="number" id="siteSize" min="0" step="0.1">
+                        </div>
+                        <div class="form-group">
+                            <label>Current Condition:</label>
+                            <select id="siteCondition">
+                                <option value="pristine">Pristine/Undisturbed</option>
+                                <option value="good">Good Condition</option>
+                                <option value="moderate">Moderately Degraded</option>
+                                <option value="poor">Poor Condition</option>
+                                <option value="degraded">Severely Degraded</option>
                             </select>
-                        </label>
-                        <div id="customQuestions"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Protected Area Status:</label>
+                            <select id="protectionStatus">
+                                <option value="none">Not Protected</option>
+                                <option value="private">Private Conservation</option>
+                                <option value="local">Local Reserve</option>
+                                <option value="state">State Reserve</option>
+                                <option value="national">National Park/World Heritage</option>
+                            </select>
+                        </div>
+                        <button id="saveAssessment" class="secondary"><i class="fas fa-save"></i> Save Assessment</button>
                     </div>
                 </div>
 
                 <div class="step">
-                    <h3>3. Threat Analysis</h3>
-                    <button id="analyzeThreats" disabled>Analyze Threats</button>
-                    <div id="threatForm" style="display: none; margin-top: 1rem;">
-                        <button id="addDefaultThreats">Add Default Threats</button>
-                        <div id="threatList"></div>
-                        <button id="addThreat">+ Add Custom Threat</button>
+                    <h3><i class="fas fa-biohazard"></i> 3. Threat Analysis</h3>
+                    <p>Identify key threats to your site's biodiversity values</p>
+                    <button id="analyzeThreats" disabled><i class="fas fa-search"></i> Analyze Threats</button>
+                    <div id="threatForm" class="toggle-content">
+                        <button id="addDefaultThreats" class="secondary"><i class="fas fa-magic"></i> Add Tasmanian Threats</button>
+                        <button id="addThreat" class="secondary"><i class="fas fa-plus"></i> Add Custom Threat</button>
+                        <div id="threatList" style="margin-top: 1rem;"></div>
                     </div>
                 </div>
 
                 <div class="step">
-                    <h3>4. Management Actions</h3>
-                    <button id="selectActions" disabled>Select Actions</button>
-                    <div id="actionForm" style="display: none; margin-top: 1rem;">
-                        <button id="addDefaultActions">Add Default Actions</button>
-                        <div id="actionList"></div>
-                        <button id="addAction">+ Add Custom Action</button>
+                    <h3><i class="fas fa-tasks"></i> 4. Management Actions</h3>
+                    <p>Select appropriate management responses</p>
+                    <button id="selectActions" disabled><i class="fas fa-check-circle"></i> Select Actions</button>
+                    <div id="actionForm" class="toggle-content">
+                        <button id="addDefaultActions" class="secondary"><i class="fas fa-magic"></i> Add Recommended Actions</button>
+                        <button id="addAction" class="secondary"><i class="fas fa-plus"></i> Add Custom Action</button>
+                        <div id="actionList" style="margin-top: 1rem;"></div>
                     </div>
                 </div>
 
                 <div class="step">
-                    <h3>5. Run Simulation</h3>
-                    <button id="runSimulation" disabled>Run Simulation</button>
-                    <div id="simulationResults" style="display: none; margin-top: 1rem;"></div>
+                    <h3><i class="fas fa-chart-line"></i> 5. Run Simulation</h3>
+                    <p>Project outcomes of your management plan</p>
+                    <button id="runSimulation" disabled><i class="fas fa-play"></i> Run Simulation</button>
+                    <div id="simulationResults" class="toggle-content" style="margin-top: 1rem;"></div>
                 </div>
 
                 <div class="step">
-                    <h3>6. Generate Report</h3>
-                    <button id="generateReport" disabled>Generate PDF Report</button>
+                    <h3><i class="fas fa-file-pdf"></i> 6. Generate Report</h3>
+                    <p>Create a professional management plan document</p>
+                    <button id="generateReport" disabled><i class="fas fa-download"></i> Generate PDF Report</button>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label>Report Type:</label>
+                        <select id="reportType">
+                            <option value="basic">Basic Summary</option>
+                            <option value="detailed">Detailed Management Plan</option>
+                            <option value="funding">Funding Application</option>
+                            <option value="academic">Academic Report</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
             <div class="map-container">
-                <h3>Project Area</h3>
+                <h3><i class="fas fa-map"></i> Project Area</h3>
                 <div id="map"></div>
                 <div id="mapControls" style="margin-top: 1rem;">
-                    <button id="drawPolygon">Draw Area</button>
-                    <button id="dropPin">Drop Pin at My Location</button>
-                    <button id="dropPinManual">Drop Pin Manually</button>
-                    <button id="clearMap">Clear Map</button>
+                    <button id="drawPolygon"><i class="fas fa-draw-polygon"></i> Draw Area</button>
+                    <button id="dropPin"><i class="fas fa-map-marker-alt"></i> Drop Pin at My Location</button>
+                    <button id="dropPinManual"><i class="fas fa-map-pin"></i> Drop Pin Manually</button>
+                    <button id="clearMap" class="danger"><i class="fas fa-trash-alt"></i> Clear Map</button>
                 </div>
-                <div id="contentArea" style="margin-top: 1rem;">
-                    <p>Or enter coordinates manually:</p>
+                <div id="contentArea" style="margin-top: 1.5rem;">
+                    <h4><i class="fas fa-crosshairs"></i> Enter Coordinates</h4>
                     <div class="coord-input">
-                        <label>Lat: </label>
-                        <input type="text" id="lat" placeholder="-41.0529">
+                        <label>Latitude: </label>
+                        <input type="text" id="lat" placeholder="-41.0529 (Tasmania approx.)">
                     </div>
                     <div class="coord-input">
-                        <label>Lng: </label>
-                        <input type="text" id="lng" placeholder="145.9066">
+                        <label>Longitude: </label>
+                        <input type="text" id="lng" placeholder="145.9066 (Tasmania approx.)">
                     </div>
-                    <button id="addMarker">Add Marker</button>
+                    <button id="addMarker"><i class="fas fa-plus"></i> Add Marker</button>
+                    <p class="help-text">Example Tasmanian locations: Hobart (-42.8821, 147.3272), Launceston (-41.4332, 147.1441), Cradle Mountain (-41.6851, 145.9499)</p>
+                </div>
+                <div id="areaCalculation" style="margin-top: 1.5rem; display: none;">
+                    <h4><i class="fas fa-ruler-combined"></i> Area Calculation</h4>
+                    <p>Approximate area: <span id="areaValue">0</span> hectares</p>
                 </div>
             </div>
         </div>
 
         <div id="reportOutput" class="report-section" style="display: none;">
-            <h2>Recommendations Report Preview</h2>
+            <h2><i class="fas fa-file-alt"></i> Recommendations Report Preview</h2>
             <div id="reportContent"></div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Help modal -->
+    <div id="helpModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background-color: white; padding: 2rem; border-radius: 10px; max-width: 800px; max-height: 80vh; overflow-y: auto;">
+            <h2><i class="fas fa-question-circle"></i> EcoSim Help Guide</h2>
+            <div class="tab-container">
+                <div class="tab active" data-tab="overview">Overview</div>
+                <div class="tab" data-tab="assessment">Assessment</div>
+                <div class="tab" data-tab="threats">Threats</div>
+                <div class="tab" data-tab="actions">Actions</div>
+                <div class="tab" data-tab="simulation">Simulation</div>
+            </div>
+            <div class="tab-content active" data-tab="overview">
+                <h3>About EcoSim</h3>
+                <p>EcoSim is a comprehensive environmental management tool designed specifically for Tasmanian ecosystems, but applicable to other regions. It helps users:</p>
+                <ul>
+                    <li>Assess environmental conditions</li>
+                    <li>Identify key threats to biodiversity</li>
+                    <li>Plan appropriate management actions</li>
+                    <li>Simulate potential outcomes</li>
+                    <li>Generate professional reports</li>
+                </ul>
+                <h3>Getting Started</h3>
+                <ol>
+                    <li>Set your user profile to tailor the tool to your needs</li>
+                    <li>Define your project area using the map tools</li>
+                    <li>Complete the site assessment questions</li>
+                    <li>Add relevant threats to your site</li>
+                    <li>Select appropriate management actions</li>
+                    <li>Run the simulation to see projected outcomes</li>
+                    <li>Generate a PDF report of your management plan</li>
+                </ol>
+            </div>
+            <div class="tab-content" data-tab="assessment">
+                <h3>Site Assessment</h3>
+                <p>The assessment section helps characterize your site's key features:</p>
+                <ul>
+                    <li><strong>Ecosystem Type:</strong> Select the primary vegetation type (automatically loads relevant questions)</li>
+                    <li><strong>Site Condition:</strong> Rate the current ecological condition</li>
+                    <li><strong>Protected Status:</strong> Indicate any formal protection status</li>
+                    <li><strong>Site Size:</strong> Important for scaling management actions</li>
+                </ul>
+                <p>Tasmanian-specific ecosystem types include:</p>
+                <ul>
+                    <li><strong>Wet Eucalypt Forest:</strong> Dominated by Eucalyptus species with dense understory</li>
+                    <li><strong>Temperate Rainforest:</strong> Myrtle beech, sassafras, and leatherwood communities</li>
+                    <li><strong>Coastal Heathland:</strong> Low-growing shrubs adapted to salt spray</li>
+                    <li><strong>Alpine Vegetation:</strong> High-altitude cushion plants and conifers</li>
+                </ul>
+            </div>
+            <div class="tab-content" data-tab="threats">
+                <h3>Threat Analysis</h3>
+                <p>Tasmania faces unique environmental threats:</p>
+                <ul>
+                    <li><strong>Invasive Species:</strong> Foxes, rabbits, deer, and wasps</li>
+                    <li><strong>Diseases:</strong> Myrtle wilt, Phytophthora root rot</li>
+                    <li><strong>Habitat Loss:</strong> From agriculture, forestry, and development</li>
+                    <li><strong>Climate Change:</strong> Particularly impacts alpine areas</li>
+                </ul>
+                <p>For each threat, you can:</p>
+                <ul>
+                    <li>Set severity (1-5 scale)</li>
+                    <li>Add custom descriptions</li>
+                    <li>Remove irrelevant threats</li>
+                </ul>
+                <p>The tool will prioritize actions based on threat severity.</p>
+            </div>
+            <div class="tab-content" data-tab="actions">
+                <h3>Management Actions</h3>
+                <p>The tool suggests appropriate actions based on:</p>
+                <ul>
+                    <li>Ecosystem type</li>
+                    <li>Identified threats</li>
+                    <li>Site condition</li>
+                </ul>
+                <p>Common Tasmanian actions include:</p>
+                <ul>
+                    <li><strong>Predator Control:</strong> For fox and cat management</li>
+                    <li><strong>Revegetation:</strong> Using local provenance plants</li>
+                    <li><strong>Weed Management:</strong> Targeting species like gorse and blackberry</li>
+                    <li><strong>Fire Management:</strong> Appropriate burning regimes</li>
+                </ul>
+                <p>You can customize each action's cost and timeframe.</p>
+            </div>
+            <div class="tab-content" data-tab="simulation">
+                <h3>Simulation</h3>
+                <p>The simulation projects:</p>
+                <ul>
+                    <li>Potential threat reduction</li>
+                    <li>Biodiversity outcomes</li>
+                    <li>Cost estimates</li>
+                    <li>Implementation timeframe</li>
+                </ul>
+                <p>Results are based on:</p>
+                <ul>
+                    <li>Tasmanian ecological research</li>
+                    <li>Threat severity rankings</li>
+                    <li>Action effectiveness studies</li>
+                    <li>Site-specific factors</li>
+                </ul>
+                <p>The simulation helps prioritize actions for maximum impact.</p>
+            </div>
+            <button id="closeHelp" style="margin-top: 1rem; width: 100%;"><i class="fas fa-times"></i> Close Help</button>
         </div>
     </div>
 
@@ -244,15 +693,18 @@
     <!-- Leaflet Draw for polygon drawing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <!-- Turf.js for area calculations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
 
     <script>
         // Initialize the map centered on Tasmania
         const map = L.map('map').setView([-41.4545, 145.9707], 7);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        
+        // Add base layers
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Add Tasmanian base layers
         const tasTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
             attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
         });
@@ -261,10 +713,16 @@
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
         });
 
+        // Tasmanian specific layers
+        const tasForests = L.tileLayer('https://services.thelist.tas.gov.au/arcgis/rest/services/Public/Basemaps_Tasmania/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tasmanian Government LIST'
+        });
+
         const baseLayers = {
-            "Street Map": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
+            "OpenStreetMap": osmLayer,
             "Topographic": tasTopo,
-            "Satellite": satellite
+            "Satellite": satellite,
+            "Tasmanian Forests": tasForests
         };
 
         L.control.layers(baseLayers).addTo(map);
@@ -275,12 +733,19 @@
         // Project data structure
         let projectData = {
             name: "",
+            organization: "",
             userLevel: "community",
             ecosystem: "",
             coordinates: [],
+            area: 0,
+            condition: "moderate",
+            protection: "none",
             threats: [],
             actions: [],
-            simulation: null
+            simulation: null,
+            assessment: {},
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
 
         // Feature groups for drawn items
@@ -293,10 +758,25 @@
                 featureGroup: drawnItems
             },
             draw: {
-                polygon: true,
+                polygon: {
+                    allowIntersection: false,
+                    showArea: true,
+                    metric: true,
+                    shapeOptions: {
+                        color: '#2E8B57',
+                        fillColor: '#2E8B57',
+                        fillOpacity: 0.2
+                    }
+                },
                 rectangle: false,
                 circle: false,
-                marker: false,
+                marker: {
+                    icon: L.icon({
+                        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41]
+                    })
+                },
                 polyline: false
             }
         });
@@ -306,20 +786,51 @@
         map.on(L.Draw.Event.CREATED, function (e) {
             const layer = e.layer;
             drawnItems.addLayer(layer);
+            
             if (layer instanceof L.Marker) {
                 projectData.coordinates = [[layer.getLatLng().lat, layer.getLatLng().lng]];
+                projectData.area = 0;
+                document.getElementById('areaCalculation').style.display = 'none';
             } else if (layer instanceof L.Polygon) {
                 projectData.coordinates = layer.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+                calculateArea(layer.getLatLngs()[0]);
             }
+            
             updateUI();
         });
+
+        // Calculate area in hectares
+        function calculateArea(latlngs) {
+            // Convert to GeoJSON format
+            const polygon = {
+                type: "Polygon",
+                coordinates: [latlngs.map(ll => [ll.lng, ll.lat])]
+            };
+            
+            // Calculate area in square meters
+            const area = turf.area(polygon);
+            
+            // Convert to hectares
+            projectData.area = area / 10000;
+            
+            // Update UI
+            document.getElementById('areaValue').textContent = projectData.area.toFixed(2);
+            document.getElementById('areaCalculation').style.display = 'block';
+            
+            // Update assessment form if open
+            if (document.getElementById('siteSize')) {
+                document.getElementById('siteSize').value = projectData.area.toFixed(2);
+            }
+        }
 
         // Clear map button
         document.getElementById('clearMap').addEventListener('click', function() {
             drawnItems.clearLayers();
             projectData.coordinates = [];
+            projectData.area = 0;
             document.getElementById('lat').value = '';
             document.getElementById('lng').value = '';
+            document.getElementById('areaCalculation').style.display = 'none';
             updateUI();
         });
 
@@ -327,39 +838,70 @@
         document.getElementById('addMarker').addEventListener('click', function() {
             const lat = parseFloat(document.getElementById('lat').value);
             const lng = parseFloat(document.getElementById('lng').value);
+            
             if (!isNaN(lat) && !isNaN(lng)) {
+                if (lat < -43.7 || lat > -40.3 || lng < 144.5 || lng > 148.5) {
+                    if (!confirm("These coordinates appear to be outside Tasmania. Continue?")) {
+                        return;
+                    }
+                }
+                
                 drawnItems.clearLayers();
                 const marker = L.marker([lat, lng]).addTo(drawnItems);
                 projectData.coordinates = [[lat, lng]];
+                projectData.area = 0;
+                document.getElementById('areaCalculation').style.display = 'none';
                 updateUI();
                 map.setView([lat, lng], 13);
             } else {
-                alert("Please enter valid coordinates");
+                showToast("Please enter valid coordinates", "error");
             }
         });
 
         // Drop pin at current location
         document.getElementById('dropPin').addEventListener('click', function() {
             if (navigator.geolocation) {
+                this.innerHTML = '<div class="loading"></div> Locating...';
+                this.disabled = true;
+                
                 navigator.geolocation.getCurrentPosition(function(position) {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     
+                    // Check if in Tasmania
+                    if (lat < -43.7 || lat > -40.3 || lng < 144.5 || lng > 148.5) {
+                        if (!confirm("Your location appears to be outside Tasmania. Continue with this location?")) {
+                            document.getElementById('dropPin').innerHTML = '<i class="fas fa-map-marker-alt"></i> Drop Pin at My Location';
+                            document.getElementById('dropPin').disabled = false;
+                            return;
+                        }
+                    }
+                    
                     drawnItems.clearLayers();
                     const marker = L.marker([lat, lng]).addTo(drawnItems);
                     projectData.coordinates = [[lat, lng]];
+                    projectData.area = 0;
                     
                     // Update coordinate fields
                     document.getElementById('lat').value = lat.toFixed(6);
                     document.getElementById('lng').value = lng.toFixed(6);
+                    document.getElementById('areaCalculation').style.display = 'none';
                     
                     updateUI();
                     map.setView([lat, lng], 13);
+                    
+                    document.getElementById('dropPin').innerHTML = '<i class="fas fa-map-marker-alt"></i> Drop Pin at My Location';
+                    document.getElementById('dropPin').disabled = false;
                 }, function(error) {
-                    alert("Unable to get your location: " + error.message);
+                    showToast("Unable to get your location: " + error.message, "error");
+                    document.getElementById('dropPin').innerHTML = '<i class="fas fa-map-marker-alt"></i> Drop Pin at My Location';
+                    document.getElementById('dropPin').disabled = false;
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000
                 });
             } else {
-                alert("Geolocation is not supported by your browser");
+                showToast("Geolocation is not supported by your browser", "error");
             }
         });
 
@@ -379,16 +921,20 @@
                 drawnItems.clearLayers();
                 const marker = L.marker([lat, lng]).addTo(drawnItems);
                 projectData.coordinates = [[lat, lng]];
+                projectData.area = 0;
                 
                 // Update coordinate fields
                 document.getElementById('lat').value = lat.toFixed(6);
                 document.getElementById('lng').value = lng.toFixed(6);
+                document.getElementById('areaCalculation').style.display = 'none';
                 
                 updateUI();
                 map.getContainer().style.cursor = '';
+                
+                showToast("Marker placed at " + lat.toFixed(4) + ", " + lng.toFixed(4), "success");
             });
             
-            alert("Click on the map to place your pin");
+            showToast("Click on the map to place your pin", "info");
         });
 
         // User level selector
@@ -397,9 +943,49 @@
             updateUI();
         });
 
-        // Start assessment
+        // Organization input
+        document.getElementById('organization').addEventListener('change', function() {
+            projectData.organization = this.value;
+        });
+
+        // Project name input
+        document.getElementById('projectName').addEventListener('change', function() {
+            projectData.name = this.value;
+        });
+
+        // Start assessment toggle
         document.getElementById('startAssessment').addEventListener('click', function() {
-            document.getElementById('assessmentForm').style.display = 'block';
+            const content = document.getElementById('assessmentForm');
+            const isExpanded = content.classList.contains('expanded');
+            
+            if (!isExpanded) {
+                // Only allow if coordinates are set
+                if (projectData.coordinates.length === 0) {
+                    showToast("Please set your project location first", "error");
+                    return;
+                }
+                
+                content.classList.add('expanded');
+                this.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Assessment';
+            } else {
+                content.classList.remove('expanded');
+                this.innerHTML = '<i class="fas fa-clipboard-check"></i> Begin Detailed Assessment';
+            }
+        });
+
+        // Save assessment
+        document.getElementById('saveAssessment').addEventListener('click', function() {
+            projectData.assessment = {
+                size: parseFloat(document.getElementById('siteSize').value) || 0,
+                condition: document.getElementById('siteCondition').value,
+                protection: document.getElementById('protectionStatus').value,
+                completed: true
+            };
+            
+            projectData.condition = projectData.assessment.condition;
+            projectData.protection = projectData.assessment.protection;
+            
+            showToast("Assessment saved successfully", "success");
             document.getElementById('analyzeThreats').disabled = false;
         });
 
@@ -411,70 +997,141 @@
 
         function updateCustomQuestions() {
             const questions = {
-                'forest': [
-                    'Estimated tree cover (%):',
-                    'Dominant tree species:',
-                    'Signs of deforestation?',
-                    'Presence of myrtle wilt?',
-                    'Evidence of logging?'
+                'wet-eucalypt': [
+                    {text: 'Dominant eucalypt species:', type: 'text', id: 'q0'},
+                    {text: 'Understory type:', type: 'select', options: ['Fern-dominated', 'Shrub-dominated', 'Mixed', 'Sparse'], id: 'q1'},
+                    {text: 'Evidence of logging history?', type: 'radio', options: ['Yes', 'No', 'Unknown'], id: 'q2'},
+                    {text: 'Presence of myrtle wilt?', type: 'radio', options: ['Yes', 'No', 'Suspected'], id: 'q3'},
+                    {text: 'Estimated tree canopy cover (%):', type: 'range', min: 0, max: 100, id: 'q4'}
+                ],
+                'rainforest': [
+                    {text: 'Dominant canopy species:', type: 'text', id: 'q0'},
+                    {text: 'Myrtle beech present?', type: 'radio', options: ['Yes', 'No'], id: 'q1'},
+                    {text: 'Signs of myrtle wilt?', type: 'radio', options: ['Yes', 'No', 'Suspected'], id: 'q2'},
+                    {text: 'Epiphyte abundance:', type: 'select', options: ['High', 'Moderate', 'Low', 'None observed'], id: 'q3'},
+                    {text: 'Logging history evidence:', type: 'select', options: ['None', 'Selective', 'Clear-felled', 'Unknown'], id: 'q4'}
                 ],
                 'wetland': [
-                    'Water source:',
-                    'Seasonal fluctuations:',
-                    'Invasive species present?',
-                    'Water quality issues?',
-                    'Frog populations observed?'
+                    {text: 'Water source:', type: 'select', options: ['Riverine', 'Palustrine', 'Lacustrine', 'Groundwater'], id: 'q0'},
+                    {text: 'Hydrology pattern:', type: 'select', options: ['Permanent', 'Seasonal', 'Ephemeral', 'Intermittent'], id: 'q1'},
+                    {text: 'Dominant vegetation:', type: 'text', id: 'q2'},
+                    {text: 'Invasive species present?', type: 'checkbox', options: ['Willow', 'Blackberry', 'Phragmites', 'Other'], id: 'q3'},
+                    {text: 'Water quality concerns:', type: 'checkbox', options: ['Turbidity', 'Nutrients', 'Salinity', 'Pollutants'], id: 'q4'}
                 ],
                 'grassland': [
-                    'Grass height (avg):',
-                    'Grazing pressure:',
-                    'Fire frequency:',
-                    'Native grass species present?',
-                    'Evidence of kangaroo activity?'
-                ],
-                'urban': [
-                    'Green space (%):',
-                    'Pollution sources:',
-                    'Wildlife presence:',
-                    'Stormwater management:',
-                    'Community use intensity:'
+                    {text: 'Dominant grass species:', type: 'text', id: 'q0'},
+                    {text: 'Native grass cover (%):', type: 'range', min: 0, max: 100, id: 'q1'},
+                    {text: 'Grazing pressure:', type: 'select', options: ['None', 'Light', 'Moderate', 'Heavy'], id: 'q2'},
+                    {text: 'Fire history:', type: 'select', options: ['Frequent', 'Occasional', 'Rare', 'Unknown'], id: 'q3'},
+                    {text: 'Kangaroo/wallaby activity:', type: 'select', options: ['None', 'Light', 'Moderate', 'Heavy'], id: 'q4'}
                 ],
                 'coastal': [
-                    'Tidal range:',
-                    'Erosion signs:',
-                    'Visitor pressure:',
-                    'Seaweed accumulation:',
-                    'Shorebird nesting areas:'
+                    {text: 'Coastal type:', type: 'select', options: ['Dune', 'Cliff', 'Rocky shore', 'Estuarine'], id: 'q0'},
+                    {text: 'Erosion signs:', type: 'select', options: ['None', 'Minor', 'Moderate', 'Severe'], id: 'q1'},
+                    {text: 'Invasive plants present?', type: 'checkbox', options: ['Marram grass', 'Sea spurge', 'Boneseed', 'Other'], id: 'q2'},
+                    {text: 'Shorebird nesting areas?', type: 'radio', options: ['Yes', 'No', 'Possible'], id: 'q3'},
+                    {text: 'Visitor pressure:', type: 'select', options: ['None', 'Low', 'Moderate', 'High'], id: 'q4'}
                 ],
                 'alpine': [
-                    'Elevation (m):',
-                    'Snow cover duration:',
-                    'Vegetation type:',
-                    'Erosion signs:',
-                    'Climate change impacts:'
+                    {text: 'Elevation (m):', type: 'number', id: 'q0'},
+                    {text: 'Vegetation type:', type: 'select', options: ['Herbfield', 'Heath', 'Coniferous shrubland', 'Feldmark'], id: 'q1'},
+                    {text: 'Snow cover duration:', type: 'select', options: ['Prolonged', 'Seasonal', 'Occasional', 'Rare'], id: 'q2'},
+                    {text: 'Erosion signs:', type: 'select', options: ['None', 'Minor', 'Moderate', 'Severe'], id: 'q3'},
+                    {text: 'Climate change impacts:', type: 'checkbox', options: ['Vegetation change', 'Species loss', 'Erosion increase', 'Other'], id: 'q4'}
+                ],
+                'riparian': [
+                    {text: 'Waterway type:', type: 'select', options: ['River', 'Stream', 'Creek', 'Drainage line'], id: 'q0'},
+                    {text: 'Flow regime:', type: 'select', options: ['Permanent', 'Seasonal', 'Ephemeral', 'Intermittent'], id: 'q1'},
+                    {text: 'Bank stability:', type: 'select', options: ['Stable', 'Moderate', 'Unstable', 'Eroding'], id: 'q2'},
+                    {text: 'Riparian vegetation width (m):', type: 'number', id: 'q3'},
+                    {text: 'Threats:', type: 'checkbox', options: ['Weeds', 'Livestock access', 'Bank erosion', 'Pollution'], id: 'q4'}
                 ],
                 'agricultural': [
-                    'Land use type:',
-                    'Soil health indicators:',
-                    'Water management:',
-                    'Pesticide use:',
-                    'Wildlife corridors:'
+                    {text: 'Land use:', type: 'select', options: ['Cropping', 'Grazing', 'Horticulture', 'Mixed'], id: 'q0'},
+                    {text: 'Soil health indicators:', type: 'checkbox', options: ['Good structure', 'Organic matter', 'Biological activity', 'Erosion'], id: 'q1'},
+                    {text: 'Water management:', type: 'select', options: ['Irrigated', 'Dryland', 'Drainage', 'Other'], id: 'q2'},
+                    {text: 'Chemical inputs:', type: 'select', options: ['None', 'Low', 'Moderate', 'High'], id: 'q3'},
+                    {text: 'Wildlife corridors:', type: 'radio', options: ['Present', 'Absent', 'Planned'], id: 'q4'}
+                ],
+                'urban': [
+                    {text: 'Urban zone:', type: 'select', options: ['Residential', 'Commercial', 'Industrial', 'Parkland'], id: 'q0'},
+                    {text: 'Green space (%):', type: 'range', min: 0, max: 100, id: 'q1'},
+                    {text: 'Native vegetation cover (%):', type: 'range', min: 0, max: 100, id: 'q2'},
+                    {text: 'Stormwater management:', type: 'select', options: ['Natural', 'Engineered', 'Mixed', 'None'], id: 'q3'},
+                    {text: 'Wildlife observed:', type: 'checkbox', options: ['Birds', 'Mammals', 'Reptiles', 'Invertebrates'], id: 'q4'}
                 ]
             };
 
             let html = '';
             if (projectData.ecosystem && questions[projectData.ecosystem]) {
                 questions[projectData.ecosystem].forEach((q, i) => {
-                    html += `<div><label>${q} <input type="text" id="q${i}"></label></div>`;
+                    html += `<div class="form-group">`;
+                    html += `<label>${q.text}</label>`;
+                    
+                    if (q.type === 'text') {
+                        html += `<input type="text" id="${q.id}">`;
+                    } else if (q.type === 'select') {
+                        html += `<select id="${q.id}">`;
+                        q.options.forEach(opt => {
+                            html += `<option value="${opt.toLowerCase()}">${opt}</option>`;
+                        });
+                        html += `</select>`;
+                    } else if (q.type === 'radio') {
+                        q.options.forEach(opt => {
+                            html += `<label style="display: inline-block; margin-right: 1rem;">
+                                <input type="radio" name="${q.id}" value="${opt.toLowerCase()}"> ${opt}
+                            </label>`;
+                        });
+                    } else if (q.type === 'checkbox') {
+                        q.options.forEach(opt => {
+                            html += `<label style="display: inline-block; margin-right: 1rem;">
+                                <input type="checkbox" name="${q.id}" value="${opt.toLowerCase()}"> ${opt}
+                            </label>`;
+                        });
+                    } else if (q.type === 'range') {
+                        html += `<input type="range" id="${q.id}" min="${q.min}" max="${q.max}" value="${Math.round((q.max-q.min)/2)}">
+                                 <span id="${q.id}-value">${Math.round((q.max-q.min)/2)}%</span>`;
+                    } else if (q.type === 'number') {
+                        html += `<input type="number" id="${q.id}">`;
+                    }
+                    
+                    html += `</div>`;
                 });
             }
+            
             document.getElementById('customQuestions').innerHTML = html;
+            
+            // Add event listeners for range inputs
+            document.querySelectorAll('input[type="range"]').forEach(range => {
+                const valueSpan = document.getElementById(`${range.id}-value`);
+                if (valueSpan) {
+                    range.addEventListener('input', function() {
+                        valueSpan.textContent = `${this.value}%`;
+                    });
+                }
+            });
         }
 
-        // Threat analysis
+        // Threat analysis toggle
         document.getElementById('analyzeThreats').addEventListener('click', function() {
-            document.getElementById('threatForm').style.display = 'block';
-            document.getElementById('selectActions').disabled = false;
+            const content = document.getElementById('threatForm');
+            const isExpanded = content.classList.contains('expanded');
+            
+            if (!isExpanded) {
+                // Only allow if assessment is complete
+                if (!projectData.assessment || !projectData.assessment.completed) {
+                    showToast("Please complete the site assessment first", "error");
+                    return;
+                }
+                
+                content.classList.add('expanded');
+                this.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Threats';
+                document.getElementById('selectActions').disabled = false;
+            } else {
+                content.classList.remove('expanded');
+                this.innerHTML = '<i class="fas fa-search"></i> Analyze Threats';
+            }
+            
             updateThreatList();
         });
 
@@ -482,98 +1139,145 @@
         const tasmanianThreats = [
             {
                 name: "Climate change impacts",
-                description: "Rising temperatures, changing rainfall patterns affecting native species",
-                severity: 4
+                description: "Rising temperatures, changing rainfall patterns affecting native species, particularly in alpine areas",
+                severity: 4,
+                appliesTo: ["all"]
             },
             {
-                name: "Invasive species (e.g., foxes, rabbits)",
-                description: "Introduced predators and competitors threatening native wildlife",
-                severity: 5
+                name: "Invasive predators (foxes, cats)",
+                description: "Introduced predators threatening native wildlife including ground-nesting birds and small mammals",
+                severity: 5,
+                appliesTo: ["wet-eucalypt", "rainforest", "grassland", "coastal", "alpine"]
             },
             {
                 name: "Myrtle wilt disease",
-                description: "Fungal disease affecting Tasmanian myrtle (Nothofagus cunninghamii)",
-                severity: 4
+                description: "Fungal disease affecting Tasmanian myrtle (Nothofagus cunninghamii) in rainforest ecosystems",
+                severity: 4,
+                appliesTo: ["rainforest"]
             },
             {
-                name: "Deforestation and logging",
-                description: "Clearing of native forests for timber and agriculture",
-                severity: 4
+                name: "Phytophthora root rot",
+                description: "Soil-borne disease affecting a range of native plants including banksias and grasstrees",
+                severity: 3,
+                appliesTo: ["wet-eucalypt", "rainforest", "grassland", "coastal"]
             },
             {
-                name: "Urban expansion",
-                description: "Habitat loss due to residential and commercial development",
-                severity: 3
+                name: "Habitat fragmentation",
+                description: "Clearing of native vegetation creating isolated patches vulnerable to edge effects",
+                severity: 4,
+                appliesTo: ["wet-eucalypt", "rainforest", "grassland"]
             },
             {
-                name: "Agricultural runoff",
-                description: "Nutrient pollution affecting waterways and wetlands",
-                severity: 3
+                name: "Invasive herbivores (rabbits, deer)",
+                description: "Introduced herbivores competing with native wildlife and damaging vegetation",
+                severity: 4,
+                appliesTo: ["wet-eucalypt", "grassland", "coastal"]
             },
             {
                 name: "Alpine ecosystem degradation",
                 description: "Climate change and human activity impacting fragile alpine areas",
-                severity: 4
+                severity: 4,
+                appliesTo: ["alpine"]
             },
             {
                 name: "Coastal erosion",
                 description: "Sea level rise and storm surges affecting coastal habitats",
-                severity: 3
+                severity: 3,
+                appliesTo: ["coastal"]
             },
             {
                 name: "Overgrazing by native wildlife",
-                description: "High densities of wallabies and wombats impacting vegetation",
-                severity: 3
-            },
-            {
-                name: "Phytophthora root rot",
-                description: "Soil-borne disease affecting a range of native plants",
-                severity: 3
+                description: "High densities of wallabies and wombats impacting vegetation regeneration",
+                severity: 3,
+                appliesTo: ["wet-eucalypt", "grassland"]
             },
             {
                 name: "Fire regime changes",
                 description: "Altered fire frequency and intensity disrupting ecosystems",
-                severity: 4
+                severity: 4,
+                appliesTo: ["wet-eucalypt", "grassland", "coastal"]
             },
             {
                 name: "Marine debris pollution",
                 description: "Plastics and other waste impacting coastal and marine life",
-                severity: 3
+                severity: 3,
+                appliesTo: ["coastal"]
+            },
+            {
+                name: "Agricultural runoff",
+                description: "Nutrient and sediment pollution affecting waterways and wetlands",
+                severity: 3,
+                appliesTo: ["riparian", "wetland"]
+            },
+            {
+                name: "Urban expansion",
+                description: "Habitat loss due to residential and commercial development",
+                severity: 3,
+                appliesTo: ["all"]
+            },
+            {
+                name: "Invasive plants (gorse, blackberry)",
+                description: "Weeds outcompeting native vegetation and altering ecosystem function",
+                severity: 4,
+                appliesTo: ["wet-eucalypt", "grassland", "riparian"]
+            },
+            {
+                name: "Changed hydrology",
+                description: "Altered water flows from dams, drainage or extraction",
+                severity: 3,
+                appliesTo: ["wetland", "riparian"]
             }
         ];
 
         document.getElementById('addDefaultThreats').addEventListener('click', function() {
+            // Filter threats that apply to current ecosystem
+            const applicableThreats = tasmanianThreats.filter(threat => 
+                threat.appliesTo.includes(projectData.ecosystem) || threat.appliesTo.includes("all")
+            );
+            
             // Only add threats that aren't already in the list
             const existingThreats = projectData.threats.map(t => t.name);
-            tasmanianThreats.forEach(threat => {
+            
+            let addedCount = 0;
+            applicableThreats.forEach(threat => {
                 if (!existingThreats.includes(threat.name)) {
                     projectData.threats.push({
                         name: threat.name,
                         description: threat.description,
-                        severity: threat.severity
+                        severity: threat.severity,
+                        appliesTo: threat.appliesTo
                     });
+                    addedCount++;
                 }
             });
+            
             updateThreatList();
+            showToast(`Added ${addedCount} relevant threats for ${projectData.ecosystem} ecosystems`, "success");
         });
 
         function updateThreatList() {
             let html = '';
-            projectData.threats.forEach((threat, i) => {
-                html += `
-                <div class="threat-item">
-                    <label><input type="checkbox" checked> ${threat.name}</label>
-                    <select class="threat-severity" data-index="${i}">
-                        <option value="1" ${threat.severity === 1 ? 'selected' : ''}>1 - Minimal</option>
-                        <option value="2" ${threat.severity === 2 ? 'selected' : ''}>2 - Slight</option>
-                        <option value="3" ${threat.severity === 3 ? 'selected' : ''}>3 - Moderate</option>
-                        <option value="4" ${threat.severity === 4 ? 'selected' : ''}>4 - Severe</option>
-                        <option value="5" ${threat.severity === 5 ? 'selected' : ''}>5 - Critical</option>
-                    </select>
-                    <button class="remove-threat" data-index="${i}">×</button>
-                    ${threat.description ? `<div class="threat-description">${threat.description}</div>` : ''}
-                </div>`;
-            });
+            
+            if (projectData.threats.length === 0) {
+                html = '<p>No threats added yet. Click "Add Tasmanian Threats" to get started.</p>';
+            } else {
+                projectData.threats.forEach((threat, i) => {
+                    html += `
+                    <div class="threat-item">
+                        <label><input type="checkbox" checked> ${threat.name}</label>
+                        <select class="threat-severity" data-index="${i}">
+                            <option value="1" ${threat.severity === 1 ? 'selected' : ''}>1 - Minimal</option>
+                            <option value="2" ${threat.severity === 2 ? 'selected' : ''}>2 - Slight</option>
+                            <option value="3" ${threat.severity === 3 ? 'selected' : ''}>3 - Moderate</option>
+                            <option value="4" ${threat.severity === 4 ? 'selected' : ''}>4 - Severe</option>
+                            <option value="5" ${threat.severity === 5 ? 'selected' : ''}>5 - Critical</option>
+                        </select>
+                        <button class="remove-threat" data-index="${i}" title="Remove threat">×</button>
+                        ${threat.description ? `<div class="threat-description">${threat.description}</div>` : ''}
+                    </div>`;
+                });
+            }
+            
             document.getElementById('threatList').innerHTML = html;
 
             // Add event listeners
@@ -581,142 +1285,280 @@
                 btn.addEventListener('click', function() {
                     projectData.threats.splice(parseInt(this.dataset.index), 1);
                     updateThreatList();
+                    showToast("Threat removed", "info");
                 });
             });
 
             document.querySelectorAll('.threat-severity').forEach(select => {
                 select.addEventListener('change', function() {
-                    projectData.threats[parseInt(this.dataset.index)].severity = parseInt(this.value);
+                    const index = parseInt(this.dataset.index);
+                    projectData.threats[index].severity = parseInt(this.value);
+                    
+                    // Update threat in list with visual feedback
+                    this.style.backgroundColor = getSeverityColor(parseInt(this.value));
+                    setTimeout(() => {
+                        this.style.backgroundColor = '';
+                    }, 500);
                 });
             });
+            
+            // Set initial colors for severity
+            document.querySelectorAll('.threat-severity').forEach(select => {
+                const severity = parseInt(select.value);
+                select.style.borderLeft = `4px solid ${getSeverityColor(severity)}`;
+            });
+        }
+
+        function getSeverityColor(severity) {
+            switch(severity) {
+                case 1: return '#5cb85c'; // Green
+                case 2: return '#5bc0de'; // Blue
+                case 3: return '#f0ad4e'; // Yellow
+                case 4: return '#ff8c00'; // Orange
+                case 5: return '#d9534f'; // Red
+                default: return '#777';
+            }
         }
 
         document.getElementById('addThreat').addEventListener('click', function() {
             const name = prompt("Enter threat name:");
             if (name) {
                 const description = prompt("Enter threat description (optional):");
+                const severity = parseInt(prompt("Severity level (1-5):") || "3");
+                
+                if (severity < 1 || severity > 5 || isNaN(severity)) {
+                    showToast("Severity must be between 1 and 5", "error");
+                    return;
+                }
+                
                 projectData.threats.push({
                     name: name,
                     description: description,
-                    severity: 3
+                    severity: severity
                 });
+                
                 updateThreatList();
+                showToast("Custom threat added", "success");
             }
         });
 
-        // Management actions
+        // Management actions toggle
         document.getElementById('selectActions').addEventListener('click', function() {
-            document.getElementById('actionForm').style.display = 'block';
-            document.getElementById('runSimulation').disabled = false;
+            const content = document.getElementById('actionForm');
+            const isExpanded = content.classList.contains('expanded');
+            
+            if (!isExpanded) {
+                // Only allow if threats are added
+                if (projectData.threats.length === 0) {
+                    showToast("Please add threats first", "error");
+                    return;
+                }
+                
+                content.classList.add('expanded');
+                this.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Actions';
+                document.getElementById('runSimulation').disabled = false;
+            } else {
+                content.classList.remove('expanded');
+                this.innerHTML = '<i class="fas fa-check-circle"></i> Select Actions';
+            }
+            
             updateActionList();
         });
 
         // Tasmanian/Australian specific management actions with descriptions
         const tasmanianActions = [
             {
-                name: "Revegetation with native species",
-                description: "Planting locally indigenous vegetation to restore habitat",
+                name: "Revegetation with local species",
+                description: "Planting locally indigenous vegetation to restore habitat, using appropriate species for the ecosystem",
                 cost: 5000,
-                time: 24
+                time: 24,
+                effectiveness: 4,
+                appliesTo: ["all"],
+                mitigates: ["Habitat fragmentation", "Urban expansion"]
             },
             {
                 name: "Fox and feral cat control",
-                description: "Implementing predator control programs to protect native wildlife",
+                description: "Implementing coordinated predator control programs to protect native wildlife",
                 cost: 15000,
-                time: 12
+                time: 12,
+                effectiveness: 5,
+                appliesTo: ["wet-eucalypt", "rainforest", "grassland", "coastal", "alpine"],
+                mitigates: ["Invasive predators (foxes, cats)"]
             },
             {
                 name: "Myrtle wilt monitoring program",
-                description: "Regular surveys to detect and manage disease outbreaks",
+                description: "Regular surveys to detect and manage disease outbreaks in rainforest areas",
                 cost: 8000,
-                time: 12
+                time: 12,
+                effectiveness: 3,
+                appliesTo: ["rainforest"],
+                mitigates: ["Myrtle wilt disease"]
             },
             {
                 name: "Riparian zone restoration",
-                description: "Improving streamside vegetation to protect waterways",
+                description: "Improving streamside vegetation to protect waterways and aquatic ecosystems",
                 cost: 10000,
-                time: 18
+                time: 18,
+                effectiveness: 4,
+                appliesTo: ["riparian", "wetland"],
+                mitigates: ["Agricultural runoff", "Changed hydrology"]
             },
             {
                 name: "Community education program",
-                description: "Engaging locals in conservation through workshops and materials",
+                description: "Engaging local communities in conservation through workshops and educational materials",
                 cost: 5000,
-                time: 6
+                time: 6,
+                effectiveness: 3,
+                appliesTo: ["all"],
+                mitigates: ["Urban expansion", "Marine debris pollution"]
             },
             {
-                name: "Weed eradication program",
-                description: "Targeted removal of invasive plant species",
+                name: "Invasive plant control",
+                description: "Targeted removal of invasive plant species with follow-up monitoring",
                 cost: 7000,
-                time: 12
+                time: 12,
+                effectiveness: 4,
+                appliesTo: ["wet-eucalypt", "grassland", "riparian", "coastal"],
+                mitigates: ["Invasive plants (gorse, blackberry)"]
             },
             {
                 name: "Wildlife corridor establishment",
-                description: "Creating habitat links between fragmented areas",
+                description: "Creating habitat links between fragmented areas to improve connectivity",
                 cost: 20000,
-                time: 36
+                time: 36,
+                effectiveness: 4,
+                appliesTo: ["wet-eucalypt", "rainforest", "grassland"],
+                mitigates: ["Habitat fragmentation"]
             },
             {
                 name: "Erosion control measures",
-                description: "Installing silt fences, revegetation to prevent soil loss",
+                description: "Installing silt fences, revegetation and other techniques to prevent soil loss",
                 cost: 12000,
-                time: 12
+                time: 12,
+                effectiveness: 4,
+                appliesTo: ["alpine", "riparian", "coastal"],
+                mitigates: ["Coastal erosion", "Alpine ecosystem degradation"]
             },
             {
                 name: "Fire management plan",
-                description: "Developing controlled burn strategies for ecosystem health",
+                description: "Developing appropriate controlled burn strategies for ecosystem health",
                 cost: 10000,
-                time: 12
+                time: 12,
+                effectiveness: 4,
+                appliesTo: ["wet-eucalypt", "grassland", "coastal"],
+                mitigates: ["Fire regime changes"]
             },
             {
                 name: "Water quality monitoring",
                 description: "Regular testing and reporting on aquatic ecosystem health",
                 cost: 6000,
-                time: 6
+                time: 6,
+                effectiveness: 3,
+                appliesTo: ["wetland", "riparian"],
+                mitigates: ["Agricultural runoff", "Changed hydrology"]
             },
             {
                 name: "Nest box installation",
                 description: "Providing artificial hollows for wildlife where natural ones are scarce",
                 cost: 3000,
-                time: 3
+                time: 3,
+                effectiveness: 3,
+                appliesTo: ["wet-eucalypt", "rainforest", "urban"],
+                mitigates: ["Habitat fragmentation"]
             },
             {
                 name: "Coastal dune restoration",
                 description: "Stabilizing dunes with native vegetation to prevent erosion",
                 cost: 15000,
-                time: 24
+                time: 24,
+                effectiveness: 4,
+                appliesTo: ["coastal"],
+                mitigates: ["Coastal erosion", "Marine debris pollution"]
+            },
+            {
+                name: "Alpine track management",
+                description: "Redirecting or hardening walking tracks to prevent vegetation damage",
+                cost: 18000,
+                time: 18,
+                effectiveness: 4,
+                appliesTo: ["alpine"],
+                mitigates: ["Alpine ecosystem degradation"]
+            },
+            {
+                name: "Phytophthora hygiene measures",
+                description: "Implementing cleaning stations and visitor protocols to prevent spread",
+                cost: 9000,
+                time: 12,
+                effectiveness: 4,
+                appliesTo: ["wet-eucalypt", "rainforest", "grassland", "coastal"],
+                mitigates: ["Phytophthora root rot"]
+            },
+            {
+                name: "Herbivore exclusion fencing",
+                description: "Protecting vegetation from overgrazing by native and introduced herbivores",
+                cost: 25000,
+                time: 24,
+                effectiveness: 5,
+                appliesTo: ["wet-eucalypt", "grassland"],
+                mitigates: ["Overgrazing by native wildlife", "Invasive herbivores (rabbits, deer)"]
             }
         ];
 
         document.getElementById('addDefaultActions').addEventListener('click', function() {
+            // Filter actions that apply to current ecosystem
+            const applicableActions = tasmanianActions.filter(action => 
+                action.appliesTo.includes(projectData.ecosystem) || action.appliesTo.includes("all")
+            );
+            
+            // Only add actions that address current threats
+            const currentThreats = projectData.threats.map(t => t.name);
+            const relevantActions = applicableActions.filter(action => 
+                action.mitigates.some(threat => currentThreats.includes(threat))
+            );
+            
             // Only add actions that aren't already in the list
             const existingActions = projectData.actions.map(a => a.name);
-            tasmanianActions.forEach(action => {
+            
+            let addedCount = 0;
+            relevantActions.forEach(action => {
                 if (!existingActions.includes(action.name)) {
                     projectData.actions.push({
                         name: action.name,
                         description: action.description,
                         cost: action.cost,
-                        time: action.time
+                        time: action.time,
+                        effectiveness: action.effectiveness,
+                        mitigates: action.mitigates
                     });
+                    addedCount++;
                 }
             });
+            
             updateActionList();
+            showToast(`Added ${addedCount} relevant actions for your threats`, "success");
         });
 
         function updateActionList() {
             let html = '';
-            projectData.actions.forEach((action, i) => {
-                html += `
-                <div class="action-item">
-                    <label><input type="checkbox" checked> ${action.name}</label>
-                    <div>
-                        <label>Cost ($): <input type="number" class="action-cost" data-index="${i}" value="${action.cost || 0}"></label>
-                        <label>Timeframe (months): <input type="number" class="action-time" data-index="${i}" value="${action.time || 12}"></label>
-                    </div>
-                    <button class="remove-action" data-index="${i}">×</button>
-                    ${action.description ? `<div class="action-description">${action.description}</div>` : ''}
-                </div>`;
-            });
+            
+            if (projectData.actions.length === 0) {
+                html = '<p>No actions added yet. Click "Add Recommended Actions" to get started.</p>';
+            } else {
+                projectData.actions.forEach((action, i) => {
+                    html += `
+                    <div class="action-item">
+                        <label><input type="checkbox" checked> ${action.name}</label>
+                        <div style="margin-top: 0.5rem;">
+                            <label>Cost ($): <input type="number" class="action-cost" data-index="${i}" value="${action.cost || 0}" min="0" step="100"></label>
+                            <label style="margin-left: 1rem;">Timeframe (months): <input type="number" class="action-time" data-index="${i}" value="${action.time || 12}" min="1" max="60"></label>
+                        </div>
+                        <button class="remove-action" data-index="${i}" title="Remove action">×</button>
+                        ${action.description ? `<div class="action-description">${action.description}</div>` : ''}
+                        ${action.mitigates ? `<div class="action-description"><strong>Addresses:</strong> ${action.mitigates.join(', ')}</div>` : ''}
+                    </div>`;
+                });
+            }
+            
             document.getElementById('actionList').innerHTML = html;
 
             // Add event listeners
@@ -724,18 +1566,49 @@
                 btn.addEventListener('click', function() {
                     projectData.actions.splice(parseInt(this.dataset.index), 1);
                     updateActionList();
+                    showToast("Action removed", "info");
                 });
             });
 
             document.querySelectorAll('.action-cost').forEach(input => {
                 input.addEventListener('change', function() {
-                    projectData.actions[parseInt(this.dataset.index)].cost = parseInt(this.value);
+                    const index = parseInt(this.dataset.index);
+                    const value = parseInt(this.value);
+                    
+                    if (isNaN(value) || value < 0) {
+                        this.value = projectData.actions[index].cost;
+                        showToast("Please enter a valid positive number", "error");
+                        return;
+                    }
+                    
+                    projectData.actions[index].cost = value;
+                    
+                    // Visual feedback
+                    this.style.backgroundColor = '#e6ffe6';
+                    setTimeout(() => {
+                        this.style.backgroundColor = '';
+                    }, 500);
                 });
             });
 
             document.querySelectorAll('.action-time').forEach(input => {
                 input.addEventListener('change', function() {
-                    projectData.actions[parseInt(this.dataset.index)].time = parseInt(this.value);
+                    const index = parseInt(this.dataset.index);
+                    const value = parseInt(this.value);
+                    
+                    if (isNaN(value) || value < 1 || value > 60) {
+                        this.value = projectData.actions[index].time;
+                        showToast("Please enter a number between 1 and 60", "error");
+                        return;
+                    }
+                    
+                    projectData.actions[index].time = value;
+                    
+                    // Visual feedback
+                    this.style.backgroundColor = '#e6ffe6';
+                    setTimeout(() => {
+                        this.style.backgroundColor = '';
+                    }, 500);
                 });
             });
         }
@@ -745,7 +1618,17 @@
             if (name) {
                 const description = prompt("Enter action description (optional):");
                 const cost = parseInt(prompt("Estimated cost ($):") || "0");
-                const time = parseInt(prompt("Timeframe (months):") || "12");
+                const time = parseInt(prompt("Timeframe (months, 1-60):") || "12");
+                
+                if (isNaN(cost) || cost < 0) {
+                    showToast("Cost must be a positive number", "error");
+                    return;
+                }
+                
+                if (isNaN(time) || time < 1 || time > 60) {
+                    showToast("Timeframe must be between 1 and 60 months", "error");
+                    return;
+                }
                 
                 projectData.actions.push({
                     name: name,
@@ -753,128 +1636,427 @@
                     cost: cost,
                     time: time
                 });
+                
                 updateActionList();
+                showToast("Custom action added", "success");
             }
         });
 
         // Run simulation
         document.getElementById('runSimulation').addEventListener('click', function() {
-            document.getElementById('simulationResults').style.display = 'block';
-            document.getElementById('generateReport').disabled = false;
+            this.innerHTML = '<div class="loading"></div> Running Simulation...';
+            this.disabled = true;
+            
+            // Show loading state
+            const resultsDiv = document.getElementById('simulationResults');
+            resultsDiv.classList.add('expanded');
+            resultsDiv.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> Running simulation, please wait...</p>';
+            
+            // Delay to simulate processing (in a real app, this would be actual calculations)
+            setTimeout(() => {
+                runActualSimulation();
+                this.innerHTML = '<i class="fas fa-play"></i> Run Simulation';
+                this.disabled = false;
+            }, 1500);
+        });
 
-            // Simple simulation logic based on inputs
+        function runActualSimulation() {
+            document.getElementById('generateReport').disabled = false;
+            
+            // Calculate total threat severity
             const totalSeverity = projectData.threats.reduce((sum, t) => sum + t.severity, 0);
+            const avgSeverity = totalSeverity / Math.max(1, projectData.threats.length);
+            
+            // Calculate total action metrics
             const totalCost = projectData.actions.reduce((sum, a) => sum + a.cost, 0);
             const totalTime = Math.max(...projectData.actions.map(a => a.time), 0);
-            const actionCount = projectData.actions.length;
-
-            // More sophisticated simulation for Tasmanian context
+            const totalEffectiveness = projectData.actions.reduce((sum, a) => sum + (a.effectiveness || 3), 0);
+            const avgEffectiveness = totalEffectiveness / Math.max(1, projectData.actions.length);
+            
+            // Calculate threat reduction percentage
             let effectiveness = 0;
-            if (actionCount > 0) {
-                // Base effectiveness based on number and type of actions
-                const actionEffectiveness = projectData.actions.reduce((sum, a) => {
-                    let score = 5; // Base score per action
-                    // Adjust based on action type (simplified for demo)
-                    if (a.name.includes('control') || a.name.includes('eradication')) score += 3;
-                    if (a.name.includes('restoration') || a.name.includes('revegetation')) score += 4;
-                    if (a.name.includes('monitoring') || a.name.includes('education')) score += 2;
-                    return sum + score;
-                }, 0);
+            if (projectData.actions.length > 0) {
+                // Base effectiveness based on action quality and quantity
+                effectiveness = (totalEffectiveness * 2) - (totalSeverity * 1.2);
                 
-                // Adjust for threat severity
-                effectiveness = Math.min(100, 
-                    (actionEffectiveness * 2) - (totalSeverity * 1.5) + 
-                    (actionCount * 3) + (projectData.userLevel === 'professional' ? 10 : 0)
-                );
+                // Adjust for ecosystem condition
+                if (projectData.condition === 'pristine') effectiveness *= 1.2;
+                if (projectData.condition === 'poor') effectiveness *= 0.8;
+                if (projectData.condition === 'degraded') effectiveness *= 0.6;
+                
+                // Adjust for protection status
+                if (projectData.protection === 'national') effectiveness *= 1.3;
+                if (projectData.protection === 'state') effectiveness *= 1.2;
+                if (projectData.protection === 'none') effectiveness *= 0.9;
+                
+                // Adjust for user level (professionals get better outcomes)
+                if (projectData.userLevel === 'professional') effectiveness *= 1.2;
+                if (projectData.userLevel === 'government') effectiveness *= 1.3;
+                
+                // Cap at 100%
+                effectiveness = Math.min(100, Math.max(0, effectiveness));
             }
-
-            // Generate specific recommendations based on ecosystem
-            let recommendations = [];
-            if (projectData.ecosystem === 'forest') {
-                recommendations.push("Consider myrtle wilt monitoring if in myrtle beech areas");
-                recommendations.push("Implement wildlife corridors to combat fragmentation");
-            } else if (projectData.ecosystem === 'coastal') {
-                recommendations.push("Include dune stabilization measures");
-                recommendations.push("Monitor for marine debris accumulation");
-            } else if (projectData.ecosystem === 'alpine') {
-                recommendations.push("Focus on climate change resilience strategies");
-                recommendations.push("Implement erosion control measures on vulnerable slopes");
-            }
-
+            
+            // Generate specific recommendations based on ecosystem and threats
+            let recommendations = generateRecommendations();
+            
+            // Generate visual representation data
+            const visualData = generateVisualData(totalSeverity, effectiveness);
+            
+            // Format cost with thousands separator
+            const formattedCost = new Intl.NumberFormat('en-AU', {
+                style: 'currency',
+                currency: 'AUD',
+                maximumFractionDigits: 0
+            }).format(totalCost);
+            
+            // Prepare results HTML
             const results = `
-                <h4>Simulation Results (5-year projection)</h4>
-                <p><strong>Threat Reduction:</strong> ${Math.max(0, Math.round(effectiveness))}% potential reduction in key threats</p>
-                <p><strong>Biodiversity Impact:</strong> ${effectiveness > 50 ? "Significant improvement likely" : effectiveness > 30 ? "Moderate improvement possible" : "Limited improvement expected"}</p>
-                <p><strong>Total Estimated Cost:</strong> $${totalCost.toLocaleString()}</p>
-                <p><strong>Implementation Timeframe:</strong> ${totalTime} months</p>
-                <p><strong>Recommendation:</strong> ${effectiveness > 60 ? "Strongly recommended" : effectiveness > 40 ? "Recommended with monitoring" : "Consider revising actions for greater impact"}</p>
+                <h4><i class="fas fa-chart-bar"></i> Simulation Results (5-year projection)</h4>
+                
+                <div class="simulation-visual">
+                    <div class="visual-title">Threat Reduction Simulation</div>
+                    ${visualData.map((bar, i) => `
+                        <div class="visual-bar" style="height: ${bar.initialHeight}%; left: ${30 + i*40}px; background-color: ${bar.color};"></div>
+                        <div class="visual-label" style="left: ${30 + i*40}px;">${bar.label}</div>
+                    `).join('')}
+                </div>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0;">
+                    <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                        <h5><i class="fas fa-biohazard"></i> Threats</h5>
+                        <p><strong>Total Threats:</strong> ${projectData.threats.length}</p>
+                        <p><strong>Average Severity:</strong> ${avgSeverity.toFixed(1)}/5</p>
+                    </div>
+                    
+                    <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                        <h5><i class="fas fa-tasks"></i> Actions</h5>
+                        <p><strong>Actions Selected:</strong> ${projectData.actions.length}</p>
+                        <p><strong>Average Effectiveness:</strong> ${avgEffectiveness.toFixed(1)}/5</p>
+                    </div>
+                    
+                    <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
+                        <h5><i class="fas fa-chart-line"></i> Outcomes</h5>
+                        <p><strong>Threat Reduction:</strong> ${Math.round(effectiveness)}%</p>
+                        <p><strong>Timeframe:</strong> ${totalTime} months</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h5><i class="fas fa-money-bill-wave"></i> Financial Summary</h5>
+                    <p><strong>Total Estimated Cost:</strong> ${formattedCost}</p>
+                    <p><strong>Annual Cost:</strong> ${new Intl.NumberFormat('en-AU', {style: 'currency', currency: 'AUD', maximumFractionDigits: 0}).format(totalCost/(totalTime/12))}</p>
+                    <p><strong>Cost per Hectare:</strong> ${projectData.area > 0 ? new Intl.NumberFormat('en-AU', {style: 'currency', currency: 'AUD', maximumFractionDigits: 0}).format(totalCost/projectData.area) : 'N/A'}</p>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <h5><i class="fas fa-check-circle"></i> Overall Recommendation</h5>
+                    <p>${getRecommendationText(effectiveness)}</p>
+                </div>
                 
                 ${recommendations.length > 0 ? `
-                <h5>Ecosystem-Specific Recommendations:</h5>
-                <ul>
-                    ${recommendations.map(r => `<li>${r}</li>`).join('')}
-                </ul>
+                <div style="margin-top: 1rem;">
+                    <h5><i class="fas fa-clipboard-list"></i> Key Recommendations</h5>
+                    <ul>
+                        ${recommendations.map(r => `<li>${r}</li>`).join('')}
+                    </ul>
+                </div>
                 ` : ''}
                 
-                <h5>Next Steps:</h5>
-                <ul>
-                    <li>Consult with local Landcare group for on-ground support</li>
-                    <li>Check NRM South/North funding opportunities for ${projectData.ecosystem} projects</li>
-                    <li>Review Tasmanian Threatened Species List for area-specific concerns</li>
-                </ul>
+                <div style="margin-top: 1rem;">
+                    <h5><i class="fas fa-arrow-right"></i> Next Steps</h5>
+                    <ul>
+                        <li>Consult with local NRM group for on-ground support</li>
+                        <li>Review Tasmanian Threatened Species List for area-specific concerns</li>
+                        ${projectData.userLevel === 'community' ? '<li>Consider engaging an ecological consultant for detailed planning</li>' : ''}
+                        <li>Explore funding opportunities through ${getFundingSources()}</li>
+                    </ul>
+                </div>
             `;
 
-            document.getElementById('simulationResults').innerHTML = results;
+            // Animate the visual bars
+            setTimeout(() => {
+                document.querySelectorAll('.visual-bar').forEach((bar, i) => {
+                    if (visualData[i].reducedHeight) {
+                        setTimeout(() => {
+                            bar.style.height = `${visualData[i].reducedHeight}%`;
+                            if (visualData[i].reducedColor) {
+                                bar.style.backgroundColor = visualData[i].reducedColor;
+                                bar.classList.add('reduced');
+                            }
+                        }, i * 200);
+                    }
+                });
+            }, 500);
+            
+            // Save simulation results
             projectData.simulation = {
-                threatReduction: Math.max(0, effectiveness),
+                threatReduction: Math.round(effectiveness),
                 totalCost: totalCost,
                 timeframe: totalTime,
-                recommendations: recommendations
+                recommendations: recommendations,
+                visualData: visualData,
+                generatedAt: new Date().toISOString()
             };
             
             // Show report preview
             document.getElementById('reportOutput').style.display = 'block';
             document.getElementById('reportContent').innerHTML = results;
-        });
+            
+            // Update results div
+            document.getElementById('simulationResults').innerHTML = results;
+            
+            showToast("Simulation completed successfully", "success");
+        }
+
+        function generateVisualData(totalSeverity, effectiveness) {
+            // Create visual bars for the main threats
+            const mainThreats = [...projectData.threats]
+                .sort((a, b) => b.severity - a.severity)
+                .slice(0, 5);
+            
+            return mainThreats.map(threat => {
+                const initialHeight = threat.severity * 15 + 10;
+                const reduction = (effectiveness / 100) * (threat.severity / 5);
+                const reducedHeight = initialHeight * (1 - reduction);
+                
+                return {
+                    label: threat.name.split(' ')[0], // First word
+                    initialHeight: initialHeight,
+                    reducedHeight: reducedHeight,
+                    color: getSeverityColor(threat.severity),
+                    reducedColor: '#2E8B57' // Green for reduced
+                };
+            });
+        }
+
+        function generateRecommendations() {
+            let recommendations = [];
+            const threats = projectData.threats.map(t => t.name);
+            
+            // Ecosystem-specific recommendations
+            if (projectData.ecosystem === 'rainforest' && threats.includes("Myrtle wilt disease")) {
+                recommendations.push("Implement myrtle wilt monitoring program and hygiene protocols for visitors");
+            }
+            
+            if ((projectData.ecosystem === 'wet-eucalypt' || projectData.ecosystem === 'grassland') && 
+                threats.includes("Invasive predators (foxes, cats)")) {
+                recommendations.push("Develop a coordinated predator control program with neighboring properties");
+            }
+            
+            if (projectData.ecosystem === 'coastal' && threats.includes("Coastal erosion")) {
+                recommendations.push("Implement dune stabilization measures using native vegetation");
+            }
+            
+            if (projectData.ecosystem === 'alpine' && threats.includes("Climate change impacts")) {
+                recommendations.push("Focus on climate change resilience strategies and track management");
+            }
+            
+            if (projectData.ecosystem === 'riparian' && threats.includes("Agricultural runoff")) {
+                recommendations.push("Establish riparian buffer zones and consider stock exclusion fencing");
+            }
+            
+            // Condition-based recommendations
+            if (projectData.condition === 'degraded' || projectData.condition === 'poor') {
+                recommendations.push("Prioritize ecological restoration actions before threat management");
+            }
+            
+            // Protection status recommendations
+            if (projectData.protection === 'none' || projectData.protection === 'private') {
+                recommendations.push("Consider formal protection status to secure long-term conservation outcomes");
+            }
+            
+            // Action-specific recommendations
+            const hasReveg = projectData.actions.some(a => a.name.includes("Revegetation"));
+            const hasPredatorControl = projectData.actions.some(a => a.name.includes("Fox and feral cat control"));
+            
+            if (hasReveg && !projectData.actions.some(a => a.name.includes("seed collection"))) {
+                recommendations.push("Include local provenance seed collection as part of revegetation program");
+            }
+            
+            if (hasPredatorControl && !projectData.actions.some(a => a.name.includes("monitoring"))) {
+                recommendations.push("Add monitoring component to predator control to measure effectiveness");
+            }
+            
+            // Ensure some recommendations if none generated
+            if (recommendations.length === 0) {
+                recommendations.push("Monitor outcomes and adapt management as needed");
+                recommendations.push("Engage local community in conservation activities");
+            }
+            
+            return recommendations.slice(0, 5); // Return top 5
+        }
+
+        function getRecommendationText(effectiveness) {
+            if (effectiveness > 75) {
+                return "Excellent plan likely to achieve significant threat reduction. Consider implementing as designed.";
+            } else if (effectiveness > 50) {
+                return "Good plan with substantial benefits expected. May benefit from additional actions for key threats.";
+            } else if (effectiveness > 30) {
+                return "Moderate impact expected. Consider adding more targeted actions for high severity threats.";
+            } else {
+                return "Limited impact projected. Review threat priorities and consider more effective actions.";
+            }
+        }
+
+        function getFundingSources() {
+            if (projectData.ecosystem === 'rainforest') {
+                return "Tasmanian Forest Conservation Fund or World Heritage grants";
+            } else if (projectData.ecosystem === 'coastal') {
+                return "Coastcare or Marine Conservation programs";
+            } else if (projectData.ecosystem === 'alpine') {
+                return "Alpine National Park funding or climate change adaptation grants";
+            } else {
+                return "NRM South/North, Landcare Australia, or Tasmanian Land Conservancy";
+            }
+        }
 
         // Generate report
         document.getElementById('generateReport').addEventListener('click', function() {
-            generatePDFReport();
+            this.innerHTML = '<div class="loading"></div> Generating Report...';
+            this.disabled = true;
+            
+            setTimeout(() => {
+                generatePDFReport();
+                this.innerHTML = '<i class="fas fa-download"></i> Generate PDF Report';
+                this.disabled = false;
+            }, 1000);
         });
 
         function generatePDFReport() {
             const doc = new jsPDF();
-
-            // Title
+            const reportType = document.getElementById('reportType').value;
+            
+            // Set document properties
+            doc.setProperties({
+                title: `EcoSim Report: ${projectData.name || "Untitled Project"}`,
+                subject: "Environmental Management Plan",
+                author: projectData.organization || projectData.userLevel + " user",
+                keywords: "tasmania, conservation, management, " + projectData.ecosystem,
+                creator: "EcoSim Tasmanian Environmental Tool"
+            });
+            
+            // Add header
             doc.setFontSize(20);
             doc.setTextColor(46, 139, 87); // Green color
-            doc.text(`EcoSim Management Report: ${projectData.name || "Untitled Project"}`, 10, 20);
+            doc.text(`EcoSim Environmental Management Report`, 105, 20, {align: 'center'});
+            
+            doc.setFontSize(16);
+            doc.text(projectData.name || "Untitled Project", 105, 30, {align: 'center'});
             doc.setTextColor(0, 0, 0); // Back to black
-
-            // Project details
+            
+            // Add metadata
+            doc.setFontSize(10);
+            doc.text(`Prepared for: ${projectData.organization || projectData.userLevel + " user"}`, 14, 40);
+            doc.text(`Date: ${new Date().toLocaleDateString('en-AU')}`, 14, 45);
+            doc.text(`Region: Tasmania, Australia`, 14, 50);
+            
+            // Add logo placeholder
+            doc.setFillColor(46, 139, 87);
+            doc.roundedRect(160, 35, 35, 20, 3, 3, 'F');
             doc.setFontSize(12);
-            doc.text(`Prepared for: ${projectData.userLevel} user`, 10, 30);
-            doc.text(`Date: ${new Date().toLocaleDateString('en-AU')}`, 10, 40);
-            doc.text(`Location: ${projectData.coordinates[0] ? projectData.coordinates[0].join(', ') : 'Not specified'}`, 10, 50);
-            doc.text(`Region: Tasmania, Australia`, 10, 60);
-
-            // Ecosystem info
+            doc.setTextColor(255, 255, 255);
+            doc.text("EcoSim", 177, 47, {align: 'center'});
+            doc.setTextColor(0, 0, 0);
+            
+            // Add table of contents for detailed reports
+            if (reportType !== 'basic') {
+                doc.setFontSize(12);
+                doc.text("Table of Contents", 14, 65);
+                doc.setDrawColor(46, 139, 87);
+                doc.line(14, 67, 60, 67);
+                
+                let tocY = 75;
+                const sections = [
+                    "1. Executive Summary",
+                    "2. Site Description",
+                    "3. Threat Assessment",
+                    "4. Management Actions",
+                    "5. Implementation Plan",
+                    "6. Budget Summary",
+                    "7. Monitoring & Evaluation"
+                ];
+                
+                sections.forEach((section, i) => {
+                    doc.text(section, 20, tocY + (i * 7));
+                    doc.text(`... ${i+1}`, 180, tocY + (i * 7), {align: 'right'});
+                });
+                
+                doc.addPage();
+            }
+            
+            // Executive Summary
             doc.setFontSize(14);
-            doc.text("1. Site Assessment", 10, 80);
+            doc.text("1. Executive Summary", 14, 20);
             doc.setFontSize(12);
-            doc.text(`Ecosystem Type: ${projectData.ecosystem.charAt(0).toUpperCase() + projectData.ecosystem.slice(1)}`, 10, 90);
-
-            // Threats
+            
+            let summaryText = [
+                `This report presents an environmental management plan for ${projectData.name || "the site"} located in Tasmania.`,
+                `The primary ecosystem type is ${getEcosystemName(projectData.ecosystem)} with a current condition rating of ${projectData.condition}.`,
+                `Key threats identified include: ${projectData.threats.slice(0, 3).map(t => t.name).join(', ')}.`,
+                `The proposed management actions are projected to achieve ${projectData.simulation.threatReduction}% threat reduction over ${Math.ceil(projectData.simulation.timeframe/12)} years.`
+            ];
+            
+            let yPos = 30;
+            summaryText.forEach(line => {
+                if (yPos > 280) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                doc.text(line, 20, yPos, {maxWidth: 170});
+                yPos += 10;
+            });
+            
+            // Site Description
+            doc.addPage();
             doc.setFontSize(14);
-            doc.text("2. Threat Analysis", 10, 110);
-            const threatRows = projectData.threats.map(t => [t.name, t.severity, t.description || '']);
+            doc.text("2. Site Description", 14, 20);
+            doc.setFontSize(12);
+            
+            let siteText = [
+                `Location: ${projectData.coordinates[0] ? projectData.coordinates[0].join(', ') : 'Not specified'}`,
+                `Ecosystem Type: ${getEcosystemName(projectData.ecosystem)}`,
+                `Area: ${projectData.area ? projectData.area.toFixed(2) + ' hectares' : 'Not specified'}`,
+                `Current Condition: ${projectData.condition.charAt(0).toUpperCase() + projectData.condition.slice(1)}`,
+                `Protection Status: ${getProtectionName(projectData.protection)}`
+            ];
+            
+            yPos = 30;
+            siteText.forEach(line => {
+                doc.text(line, 20, yPos);
+                yPos += 10;
+            });
+            
+            // Add map image placeholder
+            doc.setFillColor(240, 240, 240);
+            doc.roundedRect(20, yPos + 10, 170, 100, 3, 3, 'F');
+            doc.setTextColor(150, 150, 150);
+            doc.text("Map of project area would appear here", 105, yPos + 60, {align: 'center'});
+            doc.setTextColor(0, 0, 0);
+            
+            // Threat Assessment
+            doc.addPage();
+            doc.setFontSize(14);
+            doc.text("3. Threat Assessment", 14, 20);
+            doc.setFontSize(12);
+            
+            const threatRows = projectData.threats.map(t => [
+                t.name,
+                t.severity,
+                t.description || 'No description provided'
+            ]);
+            
             doc.autoTable({
-                startY: 120,
+                startY: 30,
                 head: [['Threat', 'Severity (1-5)', 'Description']],
                 body: threatRows,
+                headStyles: {
+                    fillColor: [46, 139, 87],
+                    textColor: 255
+                },
                 columnStyles: {
-                    0: {cellWidth: 60},
-                    1: {cellWidth: 30},
+                    0: {cellWidth: 50},
+                    1: {cellWidth: 25},
                     2: {cellWidth: 'auto'}
                 },
                 styles: {
@@ -883,15 +2065,26 @@
                     overflow: 'linebreak'
                 }
             });
-
-            // Actions
+            
+            // Management Actions
             doc.setFontSize(14);
-            doc.text("3. Recommended Actions", 10, doc.lastAutoTable.finalY + 20);
-            const actionRows = projectData.actions.map(a => [a.name, `$${a.cost.toLocaleString()}`, `${a.time} months`, a.description || '']);
+            doc.text("4. Management Actions", 14, doc.lastAutoTable.finalY + 20);
+            
+            const actionRows = projectData.actions.map(a => [
+                a.name,
+                `$${a.cost.toLocaleString()}`,
+                `${a.time} months`,
+                a.description || 'No description provided'
+            ]);
+            
             doc.autoTable({
                 startY: doc.lastAutoTable.finalY + 30,
                 head: [['Action', 'Cost', 'Timeframe', 'Description']],
                 body: actionRows,
+                headStyles: {
+                    fillColor: [46, 139, 87],
+                    textColor: 255
+                },
                 columnStyles: {
                     0: {cellWidth: 50},
                     1: {cellWidth: 25},
@@ -904,48 +2097,131 @@
                     overflow: 'linebreak'
                 }
             });
-
-            // Simulation results
-            doc.setFontSize(14);
-            doc.text("4. Projected Outcomes", 10, doc.lastAutoTable.finalY + 20);
-            doc.setFontSize(12);
-            doc.text(`• Threat Reduction: ${Math.round(projectData.simulation.threatReduction)}%`, 15, doc.lastAutoTable.finalY + 30);
-            doc.text(`• Total Cost: $${projectData.simulation.totalCost.toLocaleString()}`, 15, doc.lastAutoTable.finalY + 40);
-            doc.text(`• Timeframe: ${projectData.simulation.timeframe} months`, 15, doc.lastAutoTable.finalY + 50);
             
-            // Recommendations
-            if (projectData.simulation.recommendations && projectData.simulation.recommendations.length > 0) {
+            // Implementation Plan
+            if (reportType !== 'basic') {
+                doc.addPage();
                 doc.setFontSize(14);
-                doc.text("5. Specific Recommendations", 10, doc.lastAutoTable.finalY + 70);
+                doc.text("5. Implementation Plan", 14, 20);
                 doc.setFontSize(12);
                 
-                let yPos = doc.lastAutoTable.finalY + 80;
-                projectData.simulation.recommendations.forEach((rec, i) => {
+                // Create a timeline of actions
+                const timelineText = [
+                    "The following implementation timeline is recommended:",
+                    ""
+                ];
+                
+                // Group actions by timeframe
+                const shortTerm = projectData.actions.filter(a => a.time <= 6);
+                const mediumTerm = projectData.actions.filter(a => a.time > 6 && a.time <= 18);
+                const longTerm = projectData.actions.filter(a => a.time > 18);
+                
+                if (shortTerm.length > 0) {
+                    timelineText.push("Short-term (0-6 months):");
+                    shortTerm.forEach(a => timelineText.push(`- ${a.name}`));
+                    timelineText.push("");
+                }
+                
+                if (mediumTerm.length > 0) {
+                    timelineText.push("Medium-term (6-18 months):");
+                    mediumTerm.forEach(a => timelineText.push(`- ${a.name}`));
+                    timelineText.push("");
+                }
+                
+                if (longTerm.length > 0) {
+                    timelineText.push("Long-term (18+ months):");
+                    longTerm.forEach(a => timelineText.push(`- ${a.name}`));
+                    timelineText.push("");
+                }
+                
+                yPos = 30;
+                timelineText.forEach(line => {
                     if (yPos > 280) {
                         doc.addPage();
                         yPos = 20;
                     }
-                    doc.text(`• ${rec}`, 15, yPos);
-                    yPos += 10;
+                    doc.text(line, 20, yPos, {maxWidth: 170});
+                    yPos += line === "" ? 5 : 7;
+                });
+                
+                // Budget Summary
+                doc.setFontSize(14);
+                doc.text("6. Budget Summary", 14, yPos + 10);
+                doc.setFontSize(12);
+                
+                const totalCost = projectData.actions.reduce((sum, a) => sum + a.cost, 0);
+                const annualCost = totalCost / (Math.max(...projectData.actions.map(a => a.time), 12) / 12);
+                
+                const budgetText = [
+                    `Total Project Cost: $${totalCost.toLocaleString()}`,
+                    `Annual Cost: $${Math.round(annualCost).toLocaleString()}`,
+                    projectData.area > 0 ? `Cost per Hectare: $${Math.round(totalCost/projectData.area).toLocaleString()}` : "",
+                    "",
+                    "Funding Opportunities:",
+                    `- ${getFundingSources()}`,
+                    "- Tasmanian Government grants",
+                    "- Commonwealth Environmental Water Office",
+                    "- Philanthropic foundations"
+                ];
+                
+                yPos += 20;
+                budgetText.forEach(line => {
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.text(line, 20, yPos, {maxWidth: 170});
+                    yPos += line === "" ? 5 : 7;
+                });
+                
+                // Monitoring & Evaluation
+                doc.setFontSize(14);
+                doc.text("7. Monitoring & Evaluation", 14, yPos + 10);
+                doc.setFontSize(12);
+                
+                const monitorText = [
+                    "Recommended monitoring activities:",
+                    "",
+                    "- Baseline vegetation surveys prior to implementation",
+                    "- Photopoint monitoring at key locations",
+                    "- Annual threat assessments",
+                    "- Action-specific monitoring (e.g. predator activity indices)",
+                    "",
+                    "Evaluation should occur at:",
+                    "",
+                    "- 6 months: Review initial progress",
+                    "- 12 months: Comprehensive evaluation",
+                    "- Thereafter: Annual reviews"
+                ];
+                
+                yPos += 20;
+                monitorText.forEach(line => {
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.text(line, 20, yPos, {maxWidth: 170});
+                    yPos += line === "" ? 5 : 7;
                 });
             }
-
-            // Tasmanian context information
+            
+            // Tasmanian context page
             doc.addPage();
-            doc.setFontSize(16);
-            doc.text("Tasmanian Environmental Context", 10, 20);
+            doc.setFontSize(14);
+            doc.text("Tasmanian Environmental Context", 14, 20);
             doc.setFontSize(12);
             
-            const tasInfo = [
-                "Tasmania contains some of Australia's most unique ecosystems, with many endemic species.",
-                "Key conservation priorities include:",
+            const contextText = [
+                "Tasmania contains some of Australia's most unique ecosystems, with many endemic species found nowhere else on Earth.",
+                "",
+                "Key conservation priorities in Tasmania include:",
                 "- Temperate rainforests (particularly myrtle beech communities)",
                 "- Alpine and subalpine ecosystems",
                 "- Coastal heathlands and dunes",
                 "- Wetlands and riparian zones",
                 "",
                 "Common threats in Tasmania:",
-                "- Climate change impacts on sensitive species",
+                "- Climate change impacts on sensitive species and alpine areas",
                 "- Invasive species (foxes, cats, rabbits, wasps)",
                 "- Phytophthora root rot and myrtle wilt diseases",
                 "- Habitat fragmentation from agriculture and development",
@@ -954,21 +2230,52 @@
                 "- NRM South/North (Natural Resource Management)",
                 "- Tasmanian Land Conservancy",
                 "- DPIPWE Threatened Species Section",
-                "- Tasmanian Parks and Wildlife Service"
+                "- Tasmanian Parks and Wildlife Service",
+                "- Tasmanian Natural Values Atlas"
             ];
             
-            let yPos = 30;
-            tasInfo.forEach(line => {
+            yPos = 30;
+            contextText.forEach(line => {
                 if (yPos > 280) {
                     doc.addPage();
                     yPos = 20;
                 }
-                doc.text(line, line.startsWith("-") ? 15 : 10, yPos);
-                yPos += line === "" ? 5 : 10;
+                doc.text(line, 20, yPos, {maxWidth: 170});
+                yPos += line === "" ? 5 : 7;
             });
-
+            
             // Save the PDF
-            doc.save(`EcoSim_Report_${projectData.name || "Project"}_${new Date().toISOString().slice(0,10)}.pdf`);
+            const fileName = `EcoSim_${projectData.name ? projectData.name.replace(/[^a-z0-9]/gi, '_') : 'Project'}_${new Date().toISOString().slice(0,10)}.pdf`;
+            doc.save(fileName);
+            
+            showToast(`Report generated: ${fileName}`, "success");
+        }
+
+        function getEcosystemName(ecosystem) {
+            const names = {
+                'wet-eucalypt': 'Wet Eucalypt Forest',
+                'rainforest': 'Temperate Rainforest',
+                'wetland': 'Wetland',
+                'grassland': 'Native Grassland',
+                'coastal': 'Coastal Heathland',
+                'alpine': 'Alpine Vegetation',
+                'riparian': 'Riparian Zone',
+                'agricultural': 'Agricultural Land',
+                'urban': 'Urban/Peri-urban Area',
+                'other': 'Other Ecosystem'
+            };
+            return names[ecosystem] || ecosystem;
+        }
+
+        function getProtectionName(protection) {
+            const names = {
+                'none': 'Not Protected',
+                'private': 'Private Conservation',
+                'local': 'Local Reserve',
+                'state': 'State Reserve',
+                'national': 'National Park/World Heritage'
+            };
+            return names[protection] || protection;
         }
 
         // File management
@@ -976,72 +2283,130 @@
             if (confirm("Start a new project? Unsaved changes will be lost.")) {
                 projectData = {
                     name: "",
+                    organization: "",
                     userLevel: "community",
                     ecosystem: "",
                     coordinates: [],
+                    area: 0,
+                    condition: "moderate",
+                    protection: "none",
                     threats: [],
                     actions: [],
-                    simulation: null
+                    simulation: null,
+                    assessment: {},
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
                 };
+                
                 drawnItems.clearLayers();
                 document.getElementById('lat').value = '';
                 document.getElementById('lng').value = '';
+                document.getElementById('projectName').value = '';
+                document.getElementById('organization').value = '';
+                document.getElementById('areaCalculation').style.display = 'none';
+                
                 resetUI();
+                showToast("New project created", "success");
             }
         });
 
         document.getElementById('saveProject').addEventListener('click', function() {
-            // Update project name if set
-            const nameInput = document.getElementById('projectName');
-            if (nameInput) projectData.name = nameInput.value;
-
+            // Update project data from form fields
+            projectData.name = document.getElementById('projectName').value;
+            projectData.organization = document.getElementById('organization').value;
+            projectData.userLevel = document.getElementById('userLevel').value;
+            projectData.ecosystem = document.getElementById('ecosystemType').value;
+            projectData.updatedAt = new Date().toISOString();
+            
+            // Validate required fields
+            if (!projectData.name) {
+                showToast("Please enter a project name before saving", "error");
+                return;
+            }
+            
+            if (projectData.coordinates.length === 0) {
+                showToast("Please set a project location before saving", "error");
+                return;
+            }
+            
             // Create a blob and download link
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `${projectData.name || "EcoSim_Project"}.json`);
+            downloadAnchor.setAttribute("download", `${projectData.name.replace(/[^a-z0-9]/gi, '_')}_EcoSim_Project.json`);
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             document.body.removeChild(downloadAnchor);
+            
+            showToast(`Project "${projectData.name}" saved successfully`, "success");
         });
 
         document.getElementById('loadProject').addEventListener('click', function() {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = '.json';
+            input.style.display = 'none';
 
             input.onchange = e => {
                 const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.readAsText(file, 'UTF-8');
+                if (!file) return;
 
+                const reader = new FileReader();
                 reader.onload = readerEvent => {
                     try {
                         const content = readerEvent.target.result;
-                        projectData = JSON.parse(content);
+                        const data = JSON.parse(content);
+                        
+                        // Basic validation
+                        if (!data.coordinates || !data.ecosystem) {
+                            throw new Error("Invalid project file format");
+                        }
+                        
+                        projectData = data;
                         loadProjectData();
+                        showToast(`Project "${projectData.name}" loaded successfully`, "success");
                     } catch (err) {
-                        alert("Error loading project file");
+                        showToast("Error loading project file", "error");
                         console.error(err);
                     }
                 };
+                reader.onerror = () => {
+                    showToast("Error reading file", "error");
+                };
+                reader.readAsText(file);
             };
 
+            document.body.appendChild(input);
             input.click();
+            document.body.removeChild(input);
         });
 
         document.getElementById('shareProject').addEventListener('click', function() {
-            // Update project name if set
-            const nameInput = document.getElementById('projectName');
-            if (nameInput) projectData.name = nameInput.value;
-
+            // Update project data from form fields
+            projectData.name = document.getElementById('projectName').value;
+            projectData.organization = document.getElementById('organization').value;
+            projectData.userLevel = document.getElementById('userLevel').value;
+            projectData.ecosystem = document.getElementById('ecosystemType').value;
+            projectData.updatedAt = new Date().toISOString();
+            
+            // Validate required fields
+            if (!projectData.name) {
+                showToast("Please enter a project name before sharing", "error");
+                return;
+            }
+            
+            if (projectData.coordinates.length === 0) {
+                showToast("Please set a project location before sharing", "error");
+                return;
+            }
+            
             // Create a shareable URL (using URL hash)
             const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(projectData));
             const url = window.location.href.split('#')[0] + '#' + compressed;
             
             // Copy to clipboard
             navigator.clipboard.writeText(url).then(() => {
-                alert("Shareable link copied to clipboard!\n\nNote: Very large projects may exceed URL length limits.");
+                showToast("Shareable link copied to clipboard!", "success");
             }).catch(err => {
                 prompt("Copy this link to share your project:", url);
             });
@@ -1051,47 +2416,75 @@
             // Load basic info
             document.getElementById('userLevel').value = projectData.userLevel;
             document.getElementById('ecosystemType').value = projectData.ecosystem;
-            if (document.getElementById('projectName')) {
-                document.getElementById('projectName').value = projectData.name;
+            document.getElementById('projectName').value = projectData.name || '';
+            document.getElementById('organization').value = projectData.organization || '';
+            
+            // Load assessment data if exists
+            if (projectData.assessment) {
+                if (document.getElementById('siteSize')) {
+                    document.getElementById('siteSize').value = projectData.assessment.size || '';
+                }
+                if (document.getElementById('siteCondition')) {
+                    document.getElementById('siteCondition').value = projectData.condition || 'moderate';
+                }
+                if (document.getElementById('protectionStatus')) {
+                    document.getElementById('protectionStatus').value = projectData.protection || 'none';
+                }
             }
-
+            
             // Load map data
             drawnItems.clearLayers();
             if (projectData.coordinates.length === 1) {
                 L.marker(projectData.coordinates[0]).addTo(drawnItems);
                 document.getElementById('lat').value = projectData.coordinates[0][0];
                 document.getElementById('lng').value = projectData.coordinates[0][1];
+                document.getElementById('areaCalculation').style.display = 'none';
             } else if (projectData.coordinates.length > 1) {
-                L.polygon(projectData.coordinates).addTo(drawnItems);
+                const polygon = L.polygon(projectData.coordinates, {
+                    color: '#2E8B57',
+                    fillColor: '#2E8B57',
+                    fillOpacity: 0.2
+                }).addTo(drawnItems);
+                
+                if (projectData.area > 0) {
+                    document.getElementById('areaValue').textContent = projectData.area.toFixed(2);
+                    document.getElementById('areaCalculation').style.display = 'block';
+                }
             }
-
+            
             // Update UI based on loaded data
             if (projectData.ecosystem) {
-                document.getElementById('assessmentForm').style.display = 'block';
-                document.getElementById('analyzeThreats').disabled = false;
                 updateCustomQuestions();
+                
+                if (projectData.assessment && projectData.assessment.completed) {
+                    document.getElementById('assessmentForm').classList.add('expanded');
+                    document.getElementById('startAssessment').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Assessment';
+                    document.getElementById('analyzeThreats').disabled = false;
+                }
             }
-
+            
             if (projectData.threats.length > 0) {
-                document.getElementById('threatForm').style.display = 'block';
+                document.getElementById('threatForm').classList.add('expanded');
+                document.getElementById('analyzeThreats').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Threats';
                 document.getElementById('selectActions').disabled = false;
                 updateThreatList();
             }
-
+            
             if (projectData.actions.length > 0) {
-                document.getElementById('actionForm').style.display = 'block';
+                document.getElementById('actionForm').classList.add('expanded');
+                document.getElementById('selectActions').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Actions';
                 document.getElementById('runSimulation').disabled = false;
                 updateActionList();
             }
-
+            
             if (projectData.simulation) {
-                document.getElementById('simulationResults').style.display = 'block';
+                document.getElementById('simulationResults').classList.add('expanded');
                 document.getElementById('generateReport').disabled = false;
                 document.getElementById('reportOutput').style.display = 'block';
                 
                 let results = `
-                    <h4>Simulation Results (Loaded from Project)</h4>
-                    <p><strong>Threat Reduction:</strong> ${Math.round(projectData.simulation.threatReduction)}%</p>
+                    <h4><i class="fas fa-chart-line"></i> Simulation Results (Loaded from Project)</h4>
+                    <p><strong>Threat Reduction:</strong> ${projectData.simulation.threatReduction}%</p>
                     <p><strong>Total Cost:</strong> $${projectData.simulation.totalCost.toLocaleString()}</p>
                     <p><strong>Timeframe:</strong> ${projectData.simulation.timeframe} months</p>
                 `;
@@ -1108,16 +2501,31 @@
                 document.getElementById('simulationResults').innerHTML = results;
                 document.getElementById('reportContent').innerHTML = results;
             }
+            
+            // Zoom to project area
+            if (projectData.coordinates.length > 0) {
+                if (projectData.coordinates.length === 1) {
+                    map.setView(projectData.coordinates[0], 13);
+                } else {
+                    const bounds = L.latLngBounds(projectData.coordinates);
+                    map.fitBounds(bounds);
+                }
+            }
         }
 
         function resetUI() {
             // Reset all forms
-            document.getElementById('assessmentForm').style.display = 'none';
-            document.getElementById('threatForm').style.display = 'none';
-            document.getElementById('actionForm').style.display = 'none';
-            document.getElementById('simulationResults').style.display = 'none';
+            document.getElementById('assessmentForm').classList.remove('expanded');
+            document.getElementById('threatForm').classList.remove('expanded');
+            document.getElementById('actionForm').classList.remove('expanded');
+            document.getElementById('simulationResults').classList.remove('expanded');
             document.getElementById('reportOutput').style.display = 'none';
-
+            
+            // Reset button text
+            document.getElementById('startAssessment').innerHTML = '<i class="fas fa-clipboard-check"></i> Begin Detailed Assessment';
+            document.getElementById('analyzeThreats').innerHTML = '<i class="fas fa-search"></i> Analyze Threats';
+            document.getElementById('selectActions').innerHTML = '<i class="fas fa-check-circle"></i> Select Actions';
+            
             // Disable all buttons except first
             document.getElementById('analyzeThreats').disabled = true;
             document.getElementById('selectActions').disabled = true;
@@ -1134,6 +2542,55 @@
             }
         }
 
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast';
+            
+            // Add type class
+            if (type === 'error') toast.classList.add('error');
+            if (type === 'success') toast.classList.add('success');
+            if (type === 'warning') toast.classList.add('warning');
+            
+            // Show toast
+            setTimeout(() => {
+                toast.classList.add('show');
+                
+                // Hide after delay
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }, 100);
+        }
+
+        // Help system
+        document.getElementById('helpButton').addEventListener('click', function() {
+            document.getElementById('helpModal').style.display = 'flex';
+        });
+
+        document.getElementById('closeHelp').addEventListener('click', function() {
+            document.getElementById('helpModal').style.display = 'none';
+        });
+
+        // Tab switching in help
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update active content
+                const tabName = this.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                    if (content.dataset.tab === tabName) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+
         // Check for shared project in URL hash
         window.addEventListener('load', function() {
             if (window.location.hash && window.location.hash.length > 1) {
@@ -1143,10 +2600,15 @@
                         if (confirm("Load shared project from URL?")) {
                             projectData = JSON.parse(decompressed);
                             loadProjectData();
+                            showToast("Shared project loaded", "success");
+                            
+                            // Remove hash from URL
+                            history.replaceState(null, null, ' ');
                         }
                     }
                 } catch (err) {
                     console.error("Error loading shared project:", err);
+                    showToast("Error loading shared project", "error");
                 }
             }
         });

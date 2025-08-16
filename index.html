@@ -4,367 +4,723 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoSim: Environmental Management Tool</title>
-    <!-- Leaflet CSS for maps -->
+    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- jsPDF for report generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <style>
+        :root {
+            --primary: #2E8B57;
+            --secondary: #3CB371;
+            --light: #F5F5F5;
+            --dark: #333;
+        }
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
+            background-color: #f9f9f9;
+            color: #333;
         }
         header {
-            background-color: #2E8B57;
+            background-color: var(--primary);
             color: white;
             padding: 1rem;
             text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         .container {
             display: flex;
-            flex: 1;
-        }
-        .sidebar {
-            width: 300px;
-            background-color: #f4f4f4;
+            flex-direction: column;
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 1rem;
-            overflow-y: auto;
         }
         .main-content {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .sidebar {
             flex: 1;
+            min-width: 300px;
+            background: white;
+            border-radius: 8px;
             padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .map-container {
+            flex: 2;
+            min-width: 400px;
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         #map {
             height: 400px;
             width: 100%;
-            margin-bottom: 1rem;
+            border-radius: 6px;
         }
         .step {
             margin-bottom: 1.5rem;
             padding: 1rem;
-            background-color: white;
+            background-color: var(--light);
             border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         button {
-            background-color: #2E8B57;
+            background-color: var(--primary);
             color: white;
             border: none;
             padding: 0.5rem 1rem;
             border-radius: 4px;
             cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: var(--secondary);
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
         }
         .report-section {
             margin-top: 2rem;
             padding: 1rem;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        .user-level-selector {
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
             margin-bottom: 1rem;
+        }
+        .threat-item, .action-item {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .sidebar, .map-container {
+                min-width: 100%;
+            }
         }
     </style>
 </head>
 <body>
     <header>
         <h1>EcoSim Environmental Management Tool</h1>
-        <p>Assess, simulate, and manage ecosystems with this open-source tool</p>
+        <p>Assess, simulate, and manage ecosystems—100% in your browser</p>
     </header>
-    
+
     <div class="container">
-        <div class="sidebar">
-            <div class="user-level-selector">
-                <h3>User Level</h3>
-                <select id="userLevel">
-                    <option value="community">Community Group</option>
-                    <option value="student">Student</option>
-                    <option value="professional">Professional</option>
-                </select>
+        <div class="file-actions">
+            <button id="newProject">New Project</button>
+            <button id="saveProject">Save Project</button>
+            <button id="loadProject">Load Project</button>
+            <button id="shareProject">Share Link</button>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="step">
+                    <h3>1. User Level</h3>
+                    <select id="userLevel">
+                        <option value="community">Community Group</option>
+                        <option value="student">Student</option>
+                        <option value="professional">Professional</option>
+                    </select>
+                </div>
+
+                <div class="step">
+                    <h3>2. Site Assessment</h3>
+                    <button id="startAssessment">Begin Assessment</button>
+                    <div id="assessmentForm" style="display: none; margin-top: 1rem;">
+                        <label>Project Name: <input type="text" id="projectName"></label><br>
+                        <label>Ecosystem Type: 
+                            <select id="ecosystemType">
+                                <option value="forest">Forest</option>
+                                <option value="wetland">Wetland</option>
+                                <option value="grassland">Grassland</option>
+                                <option value="urban">Urban</option>
+                                <option value="coastal">Coastal</option>
+                            </select>
+                        </label>
+                        <div id="customQuestions"></div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <h3>3. Threat Analysis</h3>
+                    <button id="analyzeThreats" disabled>Analyze Threats</button>
+                    <div id="threatForm" style="display: none; margin-top: 1rem;">
+                        <div id="threatList"></div>
+                        <button id="addThreat">+ Add Custom Threat</button>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <h3>4. Management Actions</h3>
+                    <button id="selectActions" disabled>Select Actions</button>
+                    <div id="actionForm" style="display: none; margin-top: 1rem;">
+                        <div id="actionList"></div>
+                        <button id="addAction">+ Add Custom Action</button>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <h3>5. Run Simulation</h3>
+                    <button id="runSimulation" disabled>Run Simulation</button>
+                    <div id="simulationResults" style="display: none; margin-top: 1rem;"></div>
+                </div>
+
+                <div class="step">
+                    <h3>6. Generate Report</h3>
+                    <button id="generateReport" disabled>Generate PDF Report</button>
+                </div>
             </div>
-            
-            <div class="step">
-                <h3>1. Site Assessment</h3>
-                <p>Define your area of interest and current conditions</p>
-                <button id="startAssessment">Begin Assessment</button>
-            </div>
-            
-            <div class="step">
-                <h3>2. Threat Analysis</h3>
-                <p>Identify current and potential threats</p>
-                <button id="analyzeThreats" disabled>Analyze Threats</button>
-            </div>
-            
-            <div class="step">
-                <h3>3. Management Options</h3>
-                <p>Select potential management actions</p>
-                <button id="selectActions" disabled>Select Actions</button>
-            </div>
-            
-            <div class="step">
-                <h3>4. Run Simulation</h3>
-                <p>Project outcomes based on your inputs</p>
-                <button id="runSimulation" disabled>Run Simulation</button>
-            </div>
-            
-            <div class="step">
-                <h3>5. Generate Report</h3>
-                <p>Create a customized recommendations report</p>
-                <button id="generateReport" disabled>Generate Report</button>
+
+            <div class="map-container">
+                <h3>Project Area</h3>
+                <div id="map"></div>
+                <div id="mapControls" style="margin-top: 1rem;">
+                    <button id="drawPolygon">Draw Area</button>
+                    <button id="clearMap">Clear Map</button>
+                </div>
+                <div id="contentArea" style="margin-top: 1rem;">
+                    <p>Draw your project area on the map or enter coordinates below:</p>
+                    <label>Lat: <input type="text" id="lat"></label>
+                    <label>Lng: <input type="text" id="lng"></label>
+                    <button id="addMarker">Add Marker</button>
+                </div>
             </div>
         </div>
-        
-        <div class="main-content">
-            <div id="map"></div>
-            
-            <div id="contentArea">
-                <h2>Welcome to EcoSim</h2>
-                <p>Please select an option from the sidebar to begin your environmental assessment.</p>
-                <p>This tool helps you:</p>
-                <ul>
-                    <li>Assess current environmental conditions</li>
-                    <li>Identify key threats to ecosystems</li>
-                    <li>Evaluate management options</li>
-                    <li>Simulate potential outcomes</li>
-                    <li>Generate actionable reports</li>
-                </ul>
-            </div>
-            
-            <div id="reportOutput" class="report-section" style="display: none;">
-                <h2>Recommendations Report</h2>
-                <div id="reportContent"></div>
-                <button id="exportReport">Export as PDF</button>
-            </div>
+
+        <div id="reportOutput" class="report-section" style="display: none;">
+            <h2>Recommendations Report Preview</h2>
+            <div id="reportContent"></div>
         </div>
     </div>
 
-    <!-- Leaflet JS for maps -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet Draw for polygon drawing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+
     <script>
         // Initialize the map
         const map = L.map('map').setView([51.505, -0.09], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
-        
+
+        // Initialize jsPDF
+        const { jsPDF } = window.jspdf;
+
+        // Project data structure
+        let projectData = {
+            name: "",
+            userLevel: "community",
+            ecosystem: "",
+            coordinates: [],
+            threats: [],
+            actions: [],
+            simulation: null
+        };
+
+        // Feature groups for drawn items
+        const drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        // Initialize draw control
+        const drawControl = new L.Control.Draw({
+            edit: {
+                featureGroup: drawnItems
+            },
+            draw: {
+                polygon: true,
+                rectangle: false,
+                circle: false,
+                marker: false,
+                polyline: false
+            }
+        });
+        map.addControl(drawControl);
+
+        // Event listeners for drawing
+        map.on(L.Draw.Event.CREATED, function (e) {
+            const layer = e.layer;
+            drawnItems.addLayer(layer);
+            projectData.coordinates = layer.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+            updateUI();
+        });
+
+        // Clear map button
+        document.getElementById('clearMap').addEventListener('click', function() {
+            drawnItems.clearLayers();
+            projectData.coordinates = [];
+            updateUI();
+        });
+
+        // Add marker button
+        document.getElementById('addMarker').addEventListener('click', function() {
+            const lat = parseFloat(document.getElementById('lat').value);
+            const lng = parseFloat(document.getElementById('lng').value);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                drawnItems.clearLayers();
+                const marker = L.marker([lat, lng]).addTo(drawnItems);
+                projectData.coordinates = [[lat, lng]];
+                updateUI();
+            } else {
+                alert("Please enter valid coordinates");
+            }
+        });
+
         // User level selector
         document.getElementById('userLevel').addEventListener('change', function() {
-            // This would adjust the complexity of the interface
-            alert(`Interface adjusted for ${this.value} users`);
+            projectData.userLevel = this.value;
+            updateUI();
         });
-        
-        // Mock functionality for the buttons
+
+        // Start assessment
         document.getElementById('startAssessment').addEventListener('click', function() {
+            document.getElementById('assessmentForm').style.display = 'block';
             document.getElementById('analyzeThreats').disabled = false;
-            document.getElementById('contentArea').innerHTML = `
-                <h2>Site Assessment</h2>
-                <p>Draw your area of interest on the map or enter coordinates below:</p>
-                <div>
-                    <label>Latitude: <input type="text" id="lat"></label>
-                    <label>Longitude: <input type="text" id="lon"></label>
-                    <button id="addPoint">Add Point</button>
-                </div>
-                <p>Or select from common ecosystem types:</p>
-                <select id="ecosystemType">
-                    <option value="">Select ecosystem...</option>
-                    <option value="forest">Temperate Forest</option>
-                    <option value="wetland">Wetland</option>
-                    <option value="grassland">Grassland</option>
-                    <option value="urban">Urban</option>
-                    <option value="coastal">Coastal</option>
-                </select>
-                <div id="customQuestions"></div>
-            `;
-            
-            document.getElementById('ecosystemType').addEventListener('change', function() {
-                // Load appropriate questions based on ecosystem type
-                const questions = {
-                    'forest': [
-                        'Estimated tree cover percentage:',
-                        'Dominant tree species:',
-                        'Signs of deforestation?'
-                    ],
-                    'wetland': [
-                        'Water source:',
-                        'Seasonal water fluctuations:',
-                        'Invasive species present?'
-                    ]
-                    // Add more ecosystem-specific questions
-                };
-                
-                let html = '';
-                if (this.value && questions[this.value]) {
-                    questions[this.value].forEach(q => {
-                        html += `<div><label>${q} <input type="text"></label></div>`;
-                    });
-                }
-                document.getElementById('customQuestions').innerHTML = html;
-            });
         });
-        
-        // Mock threat analysis
+
+        // Ecosystem type change
+        document.getElementById('ecosystemType').addEventListener('change', function() {
+            projectData.ecosystem = this.value;
+            updateCustomQuestions();
+        });
+
+        function updateCustomQuestions() {
+            const questions = {
+                'forest': [
+                    'Estimated tree cover (%):',
+                    'Dominant tree species:',
+                    'Signs of deforestation?'
+                ],
+                'wetland': [
+                    'Water source:',
+                    'Seasonal fluctuations:',
+                    'Invasive species present?'
+                ],
+                'grassland': [
+                    'Grass height (avg):',
+                    'Grazing pressure:',
+                    'Fire frequency:'
+                ],
+                'urban': [
+                    'Green space (%):',
+                    'Pollution sources:',
+                    'Wildlife presence:'
+                ],
+                'coastal': [
+                    'Tidal range:',
+                    'Erosion signs:',
+                    'Visitor pressure:'
+                ]
+            };
+
+            let html = '';
+            if (projectData.ecosystem && questions[projectData.ecosystem]) {
+                questions[projectData.ecosystem].forEach((q, i) => {
+                    html += `<div><label>${q} <input type="text" id="q${i}"></label></div>`;
+                });
+            }
+            document.getElementById('customQuestions').innerHTML = html;
+        }
+
+        // Threat analysis
         document.getElementById('analyzeThreats').addEventListener('click', function() {
+            document.getElementById('threatForm').style.display = 'block';
             document.getElementById('selectActions').disabled = false;
-            document.getElementById('contentArea').innerHTML = `
-                <h2>Threat Analysis</h2>
-                <p>Select threats present in your area:</p>
-                <div id="threatList">
-                    <label><input type="checkbox" name="threat" value="climate"> Climate Change</label><br>
-                    <label><input type="checkbox" name="threat" value="invasive"> Invasive Species</label><br>
-                    <label><input type="checkbox" name="threat" value="pollution"> Pollution</label><br>
-                    <label><input type="checkbox" name="threat" value="development"> Urban Development</label><br>
-                    <label><input type="checkbox" name="threat" value="overuse"> Overuse/Overharvesting</label><br>
-                    <label><input type="checkbox" name="threat" value="other"> Other: <input type="text" id="otherThreat"></label>
-                </div>
-                <p>For each selected threat, please rate its severity (1-5):</p>
-                <div id="severityRatings"></div>
-            `;
-            
-            // Update severity ratings when threats are selected
-            document.querySelectorAll('input[name="threat"]').forEach(box => {
-                box.addEventListener('change', updateSeverityRatings);
-            });
+            updateThreatList();
         });
-        
-        function updateSeverityRatings() {
+
+        const defaultThreats = [
+            "Climate change",
+            "Invasive species",
+            "Pollution",
+            "Urban development",
+            "Overharvesting",
+            "Soil erosion",
+            "Habitat fragmentation"
+        ];
+
+        function updateThreatList() {
             let html = '';
-            document.querySelectorAll('input[name="threat"]:checked').forEach(box => {
-                html += `<div>
-                    <label>${box.value} severity: 
-                    <select id="severity_${box.value}">
-                        <option value="1">1 - Minimal</option>
-                        <option value="2">2 - Slight</option>
-                        <option value="3">3 - Moderate</option>
-                        <option value="4">4 - Severe</option>
-                        <option value="5">5 - Critical</option>
+            projectData.threats.forEach((threat, i) => {
+                html += `
+                <div class="threat-item">
+                    <label><input type="checkbox" checked> ${threat.name}</label>
+                    <select class="threat-severity" data-index="${i}">
+                        <option value="1" ${threat.severity === 1 ? 'selected' : ''}>1 - Minimal</option>
+                        <option value="2" ${threat.severity === 2 ? 'selected' : ''}>2 - Slight</option>
+                        <option value="3" ${threat.severity === 3 ? 'selected' : ''}>3 - Moderate</option>
+                        <option value="4" ${threat.severity === 4 ? 'selected' : ''}>4 - Severe</option>
+                        <option value="5" ${threat.severity === 5 ? 'selected' : ''}>5 - Critical</option>
                     </select>
-                    </label>
+                    <button class="remove-threat" data-index="${i}">×</button>
                 </div>`;
             });
-            document.getElementById('severityRatings').innerHTML = html;
+            document.getElementById('threatList').innerHTML = html;
+
+            // Add event listeners
+            document.querySelectorAll('.remove-threat').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    projectData.threats.splice(parseInt(this.dataset.index), 1);
+                    updateThreatList();
+                });
+            });
+
+            document.querySelectorAll('.threat-severity').forEach(select => {
+                select.addEventListener('change', function() {
+                    projectData.threats[parseInt(this.dataset.index)].severity = parseInt(this.value);
+                });
+            });
         }
-        
-        // Mock management options
+
+        document.getElementById('addThreat').addEventListener('click', function() {
+            const name = prompt("Enter threat name:");
+            if (name) {
+                projectData.threats.push({
+                    name: name,
+                    severity: 3
+                });
+                updateThreatList();
+            }
+        });
+
+        // Management actions
         document.getElementById('selectActions').addEventListener('click', function() {
+            document.getElementById('actionForm').style.display = 'block';
             document.getElementById('runSimulation').disabled = false;
-            document.getElementById('contentArea').innerHTML = `
-                <h2>Management Options</h2>
-                <p>Select potential management actions:</p>
-                <div id="actionList">
-                    <h3>Restoration Actions</h3>
-                    <label><input type="checkbox" name="action" value="reveg"> Revegetation</label><br>
-                    <label><input type="checkbox" name="action" value="erosion"> Erosion Control</label><br>
-                    <label><input type="checkbox" name="action" value="habitat"> Habitat Creation</label><br>
-                    
-                    <h3>Conservation Actions</h3>
-                    <label><input type="checkbox" name="action" value="protect"> Protected Area Designation</label><br>
-                    <label><input type="checkbox" name="action" value="monitor"> Monitoring Program</label><br>
-                    
-                    <h3>Community Actions</h3>
-                    <label><input type="checkbox" name="action" value="educate"> Education Program</label><br>
-                    <label><input type="checkbox" name="action" value="volunteer"> Volunteer Program</label><br>
-                </div>
-                <p>For each selected action, estimate resources needed:</p>
-                <div id="resourceEstimates"></div>
-            `;
-            
-            // Update resource estimates when actions are selected
-            document.querySelectorAll('input[name="action"]').forEach(box => {
-                box.addEventListener('change', updateResourceEstimates);
-            });
+            updateActionList();
         });
-        
-        function updateResourceEstimates() {
+
+        const defaultActions = [
+            "Revegetation",
+            "Erosion control",
+            "Invasive species removal",
+            "Protected area designation",
+            "Community education",
+            "Monitoring program",
+            "Habitat restoration"
+        ];
+
+        function updateActionList() {
             let html = '';
-            document.querySelectorAll('input[name="action"]:checked').forEach(box => {
-                html += `<div>
-                    <h4>${box.value}</h4>
-                    <label>Estimated cost ($): <input type="number" id="cost_${box.value}"></label><br>
-                    <label>Timeframe (months): <input type="number" id="time_${box.value}"></label><br>
-                    <label>Personnel needed: <input type="number" id="people_${box.value}"></label>
+            projectData.actions.forEach((action, i) => {
+                html += `
+                <div class="action-item">
+                    <label><input type="checkbox" checked> ${action.name}</label>
+                    <div>
+                        <label>Cost ($): <input type="number" class="action-cost" data-index="${i}" value="${action.cost || 0}"></label>
+                        <label>Timeframe (months): <input type="number" class="action-time" data-index="${i}" value="${action.time || 12}"></label>
+                    </div>
+                    <button class="remove-action" data-index="${i}">×</button>
                 </div>`;
             });
-            document.getElementById('resourceEstimates').innerHTML = html;
+            document.getElementById('actionList').innerHTML = html;
+
+            // Add event listeners
+            document.querySelectorAll('.remove-action').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    projectData.actions.splice(parseInt(this.dataset.index), 1);
+                    updateActionList();
+                });
+            });
+
+            document.querySelectorAll('.action-cost').forEach(input => {
+                input.addEventListener('change', function() {
+                    projectData.actions[parseInt(this.dataset.index)].cost = parseInt(this.value);
+                });
+            });
+
+            document.querySelectorAll('.action-time').forEach(input => {
+                input.addEventListener('change', function() {
+                    projectData.actions[parseInt(this.dataset.index)].time = parseInt(this.value);
+                });
+            });
         }
-        
-        // Mock simulation
+
+        document.getElementById('addAction').addEventListener('click', function() {
+            const name = prompt("Enter action name:");
+            if (name) {
+                projectData.actions.push({
+                    name: name,
+                    cost: 0,
+                    time: 12
+                });
+                updateActionList();
+            }
+        });
+
+        // Run simulation
         document.getElementById('runSimulation').addEventListener('click', function() {
+            document.getElementById('simulationResults').style.display = 'block';
             document.getElementById('generateReport').disabled = false;
-            document.getElementById('contentArea').innerHTML = `
-                <h2>Simulation Results</h2>
-                <p>Based on your inputs, here are the projected outcomes:</p>
-                <div id="simulationResults">
-                    <p>Loading simulation results...</p>
-                </div>
-                <div id="simulationViz" style="width:100%; height:300px; background:#eee; margin-top:1rem;">
-                    <!-- This would be visualization of results -->
-                </div>
+
+            // Simple simulation logic based on inputs
+            const totalSeverity = projectData.threats.reduce((sum, t) => sum + t.severity, 0);
+            const totalCost = projectData.actions.reduce((sum, a) => sum + a.cost, 0);
+            const totalTime = Math.max(...projectData.actions.map(a => a.time), 0);
+
+            let effectiveness = 0;
+            if (projectData.actions.length > 0) {
+                effectiveness = Math.min(100, 70 - (totalSeverity * 5) + (projectData.actions.length * 10));
+            }
+
+            const results = `
+                <h4>Simulation Results (5-year projection)</h4>
+                <p><strong>Threat Reduction:</strong> ${Math.round(effectiveness)}% potential reduction in key threats</p>
+                <p><strong>Biodiversity Impact:</strong> ${effectiveness > 50 ? "Significant improvement likely" : "Moderate improvement possible"}</p>
+                <p><strong>Total Estimated Cost:</strong> $${totalCost.toLocaleString()}</p>
+                <p><strong>Implementation Timeframe:</strong> ${totalTime} months</p>
+                <p><strong>Recommendation:</strong> ${effectiveness > 60 ? "Strongly recommended" : "Recommended with monitoring"}</p>
             `;
-            
-            // Simulate loading time
-            setTimeout(() => {
-                document.getElementById('simulationResults').innerHTML = `
-                    <h3>Projected Outcomes Over 5 Years</h3>
-                    <ul>
-                        <li><strong>Biodiversity:</strong> Likely increase of 15-20% with selected actions</li>
-                        <li><strong>Threat Reduction:</strong> Estimated 30% reduction in primary threats</li>
-                        <li><strong>Ecosystem Services:</strong> Improved water filtration and carbon sequestration</li>
-                        <li><strong>Cost-Benefit:</strong> $1.50 return for every $1 invested</li>
-                    </ul>
-                    <p>These projections are based on similar interventions in comparable ecosystems.</p>
-                `;
-            }, 1500);
+
+            document.getElementById('simulationResults').innerHTML = results;
+            projectData.simulation = {
+                threatReduction: effectiveness,
+                totalCost: totalCost,
+                timeframe: totalTime
+            };
         });
-        
-        // Mock report generation
+
+        // Generate report
         document.getElementById('generateReport').addEventListener('click', function() {
-            document.getElementById('reportOutput').style.display = 'block';
-            document.getElementById('contentArea').style.display = 'none';
+            generatePDFReport();
+        });
+
+        function generatePDFReport() {
+            const doc = new jsPDF();
+
+            // Title
+            doc.setFontSize(20);
+            doc.text(`EcoSim Management Report: ${projectData.name || "Untitled Project"}`, 10, 20);
+
+            // Project details
+            doc.setFontSize(12);
+            doc.text(`Prepared for: ${projectData.userLevel} user`, 10, 30);
+            doc.text(`Date: ${new Date().toLocaleDateString()}`, 10, 40);
+
+            // Ecosystem info
+            doc.setFontSize(14);
+            doc.text("1. Site Assessment", 10, 50);
+            doc.setFontSize(12);
+            doc.text(`Ecosystem Type: ${projectData.ecosystem}`, 10, 60);
+            doc.text(`Location Coordinates: ${JSON.stringify(projectData.coordinates)}`, 10, 70);
+
+            // Threats
+            doc.setFontSize(14);
+            doc.text("2. Threat Analysis", 10, 90);
+            const threatRows = projectData.threats.map(t => [t.name, t.severity]);
+            doc.autoTable({
+                startY: 100,
+                head: [['Threat', 'Severity (1-5)']],
+                body: threatRows
+            });
+
+            // Actions
+            doc.setFontSize(14);
+            doc.text("3. Recommended Actions", 10, doc.lastAutoTable.finalY + 20);
+            const actionRows = projectData.actions.map(a => [a.name, `$${a.cost}`, `${a.time} months`]);
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 30,
+                head: [['Action', 'Cost', 'Timeframe']],
+                body: actionRows
+            });
+
+            // Simulation results
+            doc.setFontSize(14);
+            doc.text("4. Projected Outcomes", 10, doc.lastAutoTable.finalY + 20);
+            doc.setFontSize(12);
+            doc.text(`Threat Reduction: ${Math.round(projectData.simulation.threatReduction)}%`, 10, doc.lastAutoTable.finalY + 30);
+            doc.text(`Total Cost: $${projectData.simulation.totalCost.toLocaleString()}`, 10, doc.lastAutoTable.finalY + 40);
+            doc.text(`Timeframe: ${projectData.simulation.timeframe} months`, 10, doc.lastAutoTable.finalY + 50);
+
+            // Save the PDF
+            doc.save(`EcoSim_Report_${projectData.name || "Project"}.pdf`);
+        }
+
+        // File management
+        document.getElementById('newProject').addEventListener('click', function() {
+            if (confirm("Start a new project? Unsaved changes will be lost.")) {
+                projectData = {
+                    name: "",
+                    userLevel: "community",
+                    ecosystem: "",
+                    coordinates: [],
+                    threats: [],
+                    actions: [],
+                    simulation: null
+                };
+                drawnItems.clearLayers();
+                resetUI();
+            }
+        });
+
+        document.getElementById('saveProject').addEventListener('click', function() {
+            // Update project name if set
+            const nameInput = document.getElementById('projectName');
+            if (nameInput) projectData.name = nameInput.value;
+
+            // Create a blob and download link
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `${projectData.name || "EcoSim_Project"}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            document.body.removeChild(downloadAnchor);
+        });
+
+        document.getElementById('loadProject').addEventListener('click', function() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.readAsText(file, 'UTF-8');
+
+                reader.onload = readerEvent => {
+                    try {
+                        const content = readerEvent.target.result;
+                        projectData = JSON.parse(content);
+                        loadProjectData();
+                    } catch (err) {
+                        alert("Error loading project file");
+                        console.error(err);
+                    }
+                };
+            };
+
+            input.click();
+        });
+
+        document.getElementById('shareProject').addEventListener('click', function() {
+            // Update project name if set
+            const nameInput = document.getElementById('projectName');
+            if (nameInput) projectData.name = nameInput.value;
+
+            // Create a shareable URL (using URL hash)
+            const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(projectData));
+            const url = window.location.href.split('#')[0] + '#' + compressed;
             
-            // Generate mock report content
-            document.getElementById('reportContent').innerHTML = `
-                <h3>Environmental Management Recommendations</h3>
-                <p>Generated on: ${new Date().toLocaleDateString()}</p>
-                
-                <h4>1. Site Assessment Summary</h4>
-                <p>Ecosystem type: Temperate Forest</p>
-                <p>Key characteristics: Mixed hardwood forest with 70% canopy cover</p>
-                
-                <h4>2. Threat Assessment</h4>
-                <ul>
-                    <li>Climate Change (Severity: 4/5)</li>
-                    <li>Invasive Species (Severity: 3/5)</li>
-                </ul>
-                
-                <h4>3. Recommended Actions</h4>
-                <ul>
-                    <li><strong>Revegetation:</strong> Focus on climate-resilient native species</li>
-                    <li><strong>Invasive Species Control:</strong> Targeted removal program</li>
-                    <li><strong>Monitoring Program:</strong> Establish baseline and track changes</li>
-                </ul>
-                
-                <h4>4. Implementation Plan</h4>
-                <p>Year 1: Initial assessment and invasive species control</p>
-                <p>Year 2-3: Revegetation and monitoring establishment</p>
-                <p>Year 4-5: Program evaluation and adjustment</p>
-                
-                <h4>5. Expected Outcomes</h4>
-                <ul>
-                    <li>Increased biodiversity and ecosystem resilience</li>
-                    <li>Reduced invasive species pressure</li>
-                    <li>Improved capacity for long-term monitoring</li>
-                </ul>
-                
-                <h4>6. Budget Estimate</h4>
-                <p>Total 5-year budget: $125,000</p>
-                <p>Potential funding sources: Local conservation grants, volunteer programs</p>
-            `;
+            // Copy to clipboard
+            navigator.clipboard.writeText(url).then(() => {
+                alert("Shareable link copied to clipboard!\n\nNote: Very large projects may exceed URL length limits.");
+            }).catch(err => {
+                prompt("Copy this link to share your project:", url);
+            });
         });
-        
-        // Export report (mock functionality)
-        document.getElementById('exportReport').addEventListener('click', function() {
-            alert('This would export the report as a PDF in a real implementation');
+
+        function loadProjectData() {
+            // Load basic info
+            document.getElementById('userLevel').value = projectData.userLevel;
+            document.getElementById('ecosystemType').value = projectData.ecosystem;
+            if (document.getElementById('projectName')) {
+                document.getElementById('projectName').value = projectData.name;
+            }
+
+            // Load map data
+            drawnItems.clearLayers();
+            if (projectData.coordinates.length === 1) {
+                L.marker(projectData.coordinates[0]).addTo(drawnItems);
+            } else if (projectData.coordinates.length > 1) {
+                L.polygon(projectData.coordinates).addTo(drawnItems);
+            }
+
+            // Update UI based on loaded data
+            if (projectData.ecosystem) {
+                document.getElementById('assessmentForm').style.display = 'block';
+                document.getElementById('analyzeThreats').disabled = false;
+                updateCustomQuestions();
+            }
+
+            if (projectData.threats.length > 0) {
+                document.getElementById('threatForm').style.display = 'block';
+                document.getElementById('selectActions').disabled = false;
+                updateThreatList();
+            }
+
+            if (projectData.actions.length > 0) {
+                document.getElementById('actionForm').style.display = 'block';
+                document.getElementById('runSimulation').disabled = false;
+                updateActionList();
+            }
+
+            if (projectData.simulation) {
+                document.getElementById('simulationResults').style.display = 'block';
+                document.getElementById('generateReport').disabled = false;
+                document.getElementById('simulationResults').innerHTML = `
+                    <h4>Simulation Results (Loaded from Project)</h4>
+                    <p><strong>Threat Reduction:</strong> ${Math.round(projectData.simulation.threatReduction)}%</p>
+                    <p><strong>Total Cost:</strong> $${projectData.simulation.totalCost.toLocaleString()}</p>
+                    <p><strong>Timeframe:</strong> ${projectData.simulation.timeframe} months</p>
+                `;
+            }
+        }
+
+        function resetUI() {
+            // Reset all forms
+            document.getElementById('assessmentForm').style.display = 'none';
+            document.getElementById('threatForm').style.display = 'none';
+            document.getElementById('actionForm').style.display = 'none';
+            document.getElementById('simulationResults').style.display = 'none';
+
+            // Disable all buttons except first
+            document.getElementById('analyzeThreats').disabled = true;
+            document.getElementById('selectActions').disabled = true;
+            document.getElementById('runSimulation').disabled = true;
+            document.getElementById('generateReport').disabled = true;
+        }
+
+        function updateUI() {
+            // Enable/disable buttons based on state
+            if (projectData.coordinates.length > 0) {
+                document.getElementById('startAssessment').disabled = false;
+            } else {
+                document.getElementById('startAssessment').disabled = true;
+            }
+        }
+
+        // Check for shared project in URL hash
+        window.addEventListener('load', function() {
+            if (window.location.hash && window.location.hash.length > 1) {
+                try {
+                    const decompressed = LZString.decompressFromEncodedURIComponent(window.location.hash.substring(1));
+                    if (decompressed) {
+                        if (confirm("Load shared project from URL?")) {
+                            projectData = JSON.parse(decompressed);
+                            loadProjectData();
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error loading shared project:", err);
+                }
+            }
         });
+
+        // Initialize
+        resetUI();
+        updateUI();
     </script>
+
+    <!-- LZString for URL compression (for sharing projects) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
 </body>
 </html>

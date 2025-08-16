@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoSim: Environmental Management Tool</title>
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background-color: #2E8B57;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+        }
+        .sidebar {
+            width: 300px;
+            background-color: #f4f4f4;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+        .main-content {
+            flex: 1;
+            padding: 1rem;
+        }
+        #map {
+            height: 400px;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        .step {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #2E8B57;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .report-section {
+            margin-top: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .user-level-selector {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>EcoSim Environmental Management Tool</h1>
+        <p>Assess, simulate, and manage ecosystems with this open-source tool</p>
+    </header>
+    
+    <div class="container">
+        <div class="sidebar">
+            <div class="user-level-selector">
+                <h3>User Level</h3>
+                <select id="userLevel">
+                    <option value="community">Community Group</option>
+                    <option value="student">Student</option>
+                    <option value="professional">Professional</option>
+                </select>
+            </div>
+            
+            <div class="step">
+                <h3>1. Site Assessment</h3>
+                <p>Define your area of interest and current conditions</p>
+                <button id="startAssessment">Begin Assessment</button>
+            </div>
+            
+            <div class="step">
+                <h3>2. Threat Analysis</h3>
+                <p>Identify current and potential threats</p>
+                <button id="analyzeThreats" disabled>Analyze Threats</button>
+            </div>
+            
+            <div class="step">
+                <h3>3. Management Options</h3>
+                <p>Select potential management actions</p>
+                <button id="selectActions" disabled>Select Actions</button>
+            </div>
+            
+            <div class="step">
+                <h3>4. Run Simulation</h3>
+                <p>Project outcomes based on your inputs</p>
+                <button id="runSimulation" disabled>Run Simulation</button>
+            </div>
+            
+            <div class="step">
+                <h3>5. Generate Report</h3>
+                <p>Create a customized recommendations report</p>
+                <button id="generateReport" disabled>Generate Report</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div id="map"></div>
+            
+            <div id="contentArea">
+                <h2>Welcome to EcoSim</h2>
+                <p>Please select an option from the sidebar to begin your environmental assessment.</p>
+                <p>This tool helps you:</p>
+                <ul>
+                    <li>Assess current environmental conditions</li>
+                    <li>Identify key threats to ecosystems</li>
+                    <li>Evaluate management options</li>
+                    <li>Simulate potential outcomes</li>
+                    <li>Generate actionable reports</li>
+                </ul>
+            </div>
+            
+            <div id="reportOutput" class="report-section" style="display: none;">
+                <h2>Recommendations Report</h2>
+                <div id="reportContent"></div>
+                <button id="exportReport">Export as PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS for maps -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([51.505, -0.09], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // User level selector
+        document.getElementById('userLevel').addEventListener('change', function() {
+            // This would adjust the complexity of the interface
+            alert(`Interface adjusted for ${this.value} users`);
+        });
+        
+        // Mock functionality for the buttons
+        document.getElementById('startAssessment').addEventListener('click', function() {
+            document.getElementById('analyzeThreats').disabled = false;
+            document.getElementById('contentArea').innerHTML = `
+                <h2>Site Assessment</h2>
+                <p>Draw your area of interest on the map or enter coordinates below:</p>
+                <div>
+                    <label>Latitude: <input type="text" id="lat"></label>
+                    <label>Longitude: <input type="text" id="lon"></label>
+                    <button id="addPoint">Add Point</button>
+                </div>
+                <p>Or select from common ecosystem types:</p>
+                <select id="ecosystemType">
+                    <option value="">Select ecosystem...</option>
+                    <option value="forest">Temperate Forest</option>
+                    <option value="wetland">Wetland</option>
+                    <option value="grassland">Grassland</option>
+                    <option value="urban">Urban</option>
+                    <option value="coastal">Coastal</option>
+                </select>
+                <div id="customQuestions"></div>
+            `;
+            
+            document.getElementById('ecosystemType').addEventListener('change', function() {
+                // Load appropriate questions based on ecosystem type
+                const questions = {
+                    'forest': [
+                        'Estimated tree cover percentage:',
+                        'Dominant tree species:',
+                        'Signs of deforestation?'
+                    ],
+                    'wetland': [
+                        'Water source:',
+                        'Seasonal water fluctuations:',
+                        'Invasive species present?'
+                    ]
+                    // Add more ecosystem-specific questions
+                };
+                
+                let html = '';
+                if (this.value && questions[this.value]) {
+                    questions[this.value].forEach(q => {
+                        html += `<div><label>${q} <input type="text"></label></div>`;
+                    });
+                }
+                document.getElementById('customQuestions').innerHTML = html;
+            });
+        });
+        
+        // Mock threat analysis
+        document.getElementById('analyzeThreats').addEventListener('click', function() {
+            document.getElementById('selectActions').disabled = false;
+            document.getElementById('contentArea').innerHTML = `
+                <h2>Threat Analysis</h2>
+                <p>Select threats present in your area:</p>
+                <div id="threatList">
+                    <label><input type="checkbox" name="threat" value="climate"> Climate Change</label><br>
+                    <label><input type="checkbox" name="threat" value="invasive"> Invasive Species</label><br>
+                    <label><input type="checkbox" name="threat" value="pollution"> Pollution</label><br>
+                    <label><input type="checkbox" name="threat" value="development"> Urban Development</label><br>
+                    <label><input type="checkbox" name="threat" value="overuse"> Overuse/Overharvesting</label><br>
+                    <label><input type="checkbox" name="threat" value="other"> Other: <input type="text" id="otherThreat"></label>
+                </div>
+                <p>For each selected threat, please rate its severity (1-5):</p>
+                <div id="severityRatings"></div>
+            `;
+            
+            // Update severity ratings when threats are selected
+            document.querySelectorAll('input[name="threat"]').forEach(box => {
+                box.addEventListener('change', updateSeverityRatings);
+            });
+        });
+        
+        function updateSeverityRatings() {
+            let html = '';
+            document.querySelectorAll('input[name="threat"]:checked').forEach(box => {
+                html += `<div>
+                    <label>${box.value} severity: 
+                    <select id="severity_${box.value}">
+                        <option value="1">1 - Minimal</option>
+                        <option value="2">2 - Slight</option>
+                        <option value="3">3 - Moderate</option>
+                        <option value="4">4 - Severe</option>
+                        <option value="5">5 - Critical</option>
+                    </select>
+                    </label>
+                </div>`;
+            });
+            document.getElementById('severityRatings').innerHTML = html;
+        }
+        
+        // Mock management options
+        document.getElementById('selectActions').addEventListener('click', function() {
+            document.getElementById('runSimulation').disabled = false;
+            document.getElementById('contentArea').innerHTML = `
+                <h2>Management Options</h2>
+                <p>Select potential management actions:</p>
+                <div id="actionList">
+                    <h3>Restoration Actions</h3>
+                    <label><input type="checkbox" name="action" value="reveg"> Revegetation</label><br>
+                    <label><input type="checkbox" name="action" value="erosion"> Erosion Control</label><br>
+                    <label><input type="checkbox" name="action" value="habitat"> Habitat Creation</label><br>
+                    
+                    <h3>Conservation Actions</h3>
+                    <label><input type="checkbox" name="action" value="protect"> Protected Area Designation</label><br>
+                    <label><input type="checkbox" name="action" value="monitor"> Monitoring Program</label><br>
+                    
+                    <h3>Community Actions</h3>
+                    <label><input type="checkbox" name="action" value="educate"> Education Program</label><br>
+                    <label><input type="checkbox" name="action" value="volunteer"> Volunteer Program</label><br>
+                </div>
+                <p>For each selected action, estimate resources needed:</p>
+                <div id="resourceEstimates"></div>
+            `;
+            
+            // Update resource estimates when actions are selected
+            document.querySelectorAll('input[name="action"]').forEach(box => {
+                box.addEventListener('change', updateResourceEstimates);
+            });
+        });
+        
+        function updateResourceEstimates() {
+            let html = '';
+            document.querySelectorAll('input[name="action"]:checked').forEach(box => {
+                html += `<div>
+                    <h4>${box.value}</h4>
+                    <label>Estimated cost ($): <input type="number" id="cost_${box.value}"></label><br>
+                    <label>Timeframe (months): <input type="number" id="time_${box.value}"></label><br>
+                    <label>Personnel needed: <input type="number" id="people_${box.value}"></label>
+                </div>`;
+            });
+            document.getElementById('resourceEstimates').innerHTML = html;
+        }
+        
+        // Mock simulation
+        document.getElementById('runSimulation').addEventListener('click', function() {
+            document.getElementById('generateReport').disabled = false;
+            document.getElementById('contentArea').innerHTML = `
+                <h2>Simulation Results</h2>
+                <p>Based on your inputs, here are the projected outcomes:</p>
+                <div id="simulationResults">
+                    <p>Loading simulation results...</p>
+                </div>
+                <div id="simulationViz" style="width:100%; height:300px; background:#eee; margin-top:1rem;">
+                    <!-- This would be visualization of results -->
+                </div>
+            `;
+            
+            // Simulate loading time
+            setTimeout(() => {
+                document.getElementById('simulationResults').innerHTML = `
+                    <h3>Projected Outcomes Over 5 Years</h3>
+                    <ul>
+                        <li><strong>Biodiversity:</strong> Likely increase of 15-20% with selected actions</li>
+                        <li><strong>Threat Reduction:</strong> Estimated 30% reduction in primary threats</li>
+                        <li><strong>Ecosystem Services:</strong> Improved water filtration and carbon sequestration</li>
+                        <li><strong>Cost-Benefit:</strong> $1.50 return for every $1 invested</li>
+                    </ul>
+                    <p>These projections are based on similar interventions in comparable ecosystems.</p>
+                `;
+            }, 1500);
+        });
+        
+        // Mock report generation
+        document.getElementById('generateReport').addEventListener('click', function() {
+            document.getElementById('reportOutput').style.display = 'block';
+            document.getElementById('contentArea').style.display = 'none';
+            
+            // Generate mock report content
+            document.getElementById('reportContent').innerHTML = `
+                <h3>Environmental Management Recommendations</h3>
+                <p>Generated on: ${new Date().toLocaleDateString()}</p>
+                
+                <h4>1. Site Assessment Summary</h4>
+                <p>Ecosystem type: Temperate Forest</p>
+                <p>Key characteristics: Mixed hardwood forest with 70% canopy cover</p>
+                
+                <h4>2. Threat Assessment</h4>
+                <ul>
+                    <li>Climate Change (Severity: 4/5)</li>
+                    <li>Invasive Species (Severity: 3/5)</li>
+                </ul>
+                
+                <h4>3. Recommended Actions</h4>
+                <ul>
+                    <li><strong>Revegetation:</strong> Focus on climate-resilient native species</li>
+                    <li><strong>Invasive Species Control:</strong> Targeted removal program</li>
+                    <li><strong>Monitoring Program:</strong> Establish baseline and track changes</li>
+                </ul>
+                
+                <h4>4. Implementation Plan</h4>
+                <p>Year 1: Initial assessment and invasive species control</p>
+                <p>Year 2-3: Revegetation and monitoring establishment</p>
+                <p>Year 4-5: Program evaluation and adjustment</p>
+                
+                <h4>5. Expected Outcomes</h4>
+                <ul>
+                    <li>Increased biodiversity and ecosystem resilience</li>
+                    <li>Reduced invasive species pressure</li>
+                    <li>Improved capacity for long-term monitoring</li>
+                </ul>
+                
+                <h4>6. Budget Estimate</h4>
+                <p>Total 5-year budget: $125,000</p>
+                <p>Potential funding sources: Local conservation grants, volunteer programs</p>
+            `;
+        });
+        
+        // Export report (mock functionality)
+        document.getElementById('exportReport').addEventListener('click', function() {
+            alert('This would export the report as a PDF in a real implementation');
+        });
+    </script>
+</body>
+</html>

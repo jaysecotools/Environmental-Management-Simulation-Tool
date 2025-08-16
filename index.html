@@ -77,6 +77,7 @@
             border-radius: 4px;
             cursor: pointer;
             transition: background 0.3s;
+            margin: 0.25rem;
         }
         button:hover {
             background-color: var(--secondary);
@@ -96,6 +97,7 @@
             display: flex;
             gap: 0.5rem;
             margin-bottom: 1rem;
+            flex-wrap: wrap;
         }
         .threat-item, .action-item {
             margin-bottom: 0.5rem;
@@ -103,6 +105,22 @@
             background: white;
             border-radius: 4px;
             border: 1px solid #ddd;
+        }
+        .coord-input {
+            margin: 0.5rem 0;
+        }
+        .coord-input label {
+            display: inline-block;
+            min-width: 60px;
+        }
+        .coord-input input {
+            width: 120px;
+            padding: 0.25rem;
+        }
+        .threat-description, .action-description {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 0.2rem;
         }
         @media (max-width: 768px) {
             .main-content {
@@ -117,7 +135,7 @@
 <body>
     <header>
         <h1>EcoSim Environmental Management Tool</h1>
-        <p>Assess, simulate, and manage ecosystems—100% in your browser</p>
+        <p>Assess, simulate, and manage Tasmanian/Australian ecosystems—100% in your browser</p>
     </header>
 
     <div class="container">
@@ -151,6 +169,8 @@
                                 <option value="grassland">Grassland</option>
                                 <option value="urban">Urban</option>
                                 <option value="coastal">Coastal</option>
+                                <option value="alpine">Alpine</option>
+                                <option value="agricultural">Agricultural</option>
                             </select>
                         </label>
                         <div id="customQuestions"></div>
@@ -161,6 +181,7 @@
                     <h3>3. Threat Analysis</h3>
                     <button id="analyzeThreats" disabled>Analyze Threats</button>
                     <div id="threatForm" style="display: none; margin-top: 1rem;">
+                        <button id="addDefaultThreats">Add Default Threats</button>
                         <div id="threatList"></div>
                         <button id="addThreat">+ Add Custom Threat</button>
                     </div>
@@ -170,6 +191,7 @@
                     <h3>4. Management Actions</h3>
                     <button id="selectActions" disabled>Select Actions</button>
                     <div id="actionForm" style="display: none; margin-top: 1rem;">
+                        <button id="addDefaultActions">Add Default Actions</button>
                         <div id="actionList"></div>
                         <button id="addAction">+ Add Custom Action</button>
                     </div>
@@ -192,12 +214,20 @@
                 <div id="map"></div>
                 <div id="mapControls" style="margin-top: 1rem;">
                     <button id="drawPolygon">Draw Area</button>
+                    <button id="dropPin">Drop Pin at My Location</button>
+                    <button id="dropPinManual">Drop Pin Manually</button>
                     <button id="clearMap">Clear Map</button>
                 </div>
                 <div id="contentArea" style="margin-top: 1rem;">
-                    <p>Draw your project area on the map or enter coordinates below:</p>
-                    <label>Lat: <input type="text" id="lat"></label>
-                    <label>Lng: <input type="text" id="lng"></label>
+                    <p>Or enter coordinates manually:</p>
+                    <div class="coord-input">
+                        <label>Lat: </label>
+                        <input type="text" id="lat" placeholder="-41.0529">
+                    </div>
+                    <div class="coord-input">
+                        <label>Lng: </label>
+                        <input type="text" id="lng" placeholder="145.9066">
+                    </div>
                     <button id="addMarker">Add Marker</button>
                 </div>
             </div>
@@ -216,11 +246,28 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 
     <script>
-        // Initialize the map
-        const map = L.map('map').setView([51.505, -0.09], 13);
+        // Initialize the map centered on Tasmania
+        const map = L.map('map').setView([-41.4545, 145.9707], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
+
+        // Add Tasmanian base layers
+        const tasTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
+
+        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        const baseLayers = {
+            "Street Map": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
+            "Topographic": tasTopo,
+            "Satellite": satellite
+        };
+
+        L.control.layers(baseLayers).addTo(map);
 
         // Initialize jsPDF
         const { jsPDF } = window.jspdf;
@@ -259,7 +306,11 @@
         map.on(L.Draw.Event.CREATED, function (e) {
             const layer = e.layer;
             drawnItems.addLayer(layer);
-            projectData.coordinates = layer.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+            if (layer instanceof L.Marker) {
+                projectData.coordinates = [[layer.getLatLng().lat, layer.getLatLng().lng]];
+            } else if (layer instanceof L.Polygon) {
+                projectData.coordinates = layer.getLatLngs()[0].map(ll => [ll.lat, ll.lng]);
+            }
             updateUI();
         });
 
@@ -267,6 +318,8 @@
         document.getElementById('clearMap').addEventListener('click', function() {
             drawnItems.clearLayers();
             projectData.coordinates = [];
+            document.getElementById('lat').value = '';
+            document.getElementById('lng').value = '';
             updateUI();
         });
 
@@ -279,9 +332,63 @@
                 const marker = L.marker([lat, lng]).addTo(drawnItems);
                 projectData.coordinates = [[lat, lng]];
                 updateUI();
+                map.setView([lat, lng], 13);
             } else {
                 alert("Please enter valid coordinates");
             }
+        });
+
+        // Drop pin at current location
+        document.getElementById('dropPin').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    drawnItems.clearLayers();
+                    const marker = L.marker([lat, lng]).addTo(drawnItems);
+                    projectData.coordinates = [[lat, lng]];
+                    
+                    // Update coordinate fields
+                    document.getElementById('lat').value = lat.toFixed(6);
+                    document.getElementById('lng').value = lng.toFixed(6);
+                    
+                    updateUI();
+                    map.setView([lat, lng], 13);
+                }, function(error) {
+                    alert("Unable to get your location: " + error.message);
+                });
+            } else {
+                alert("Geolocation is not supported by your browser");
+            }
+        });
+
+        // Drop pin manually by clicking on map
+        document.getElementById('dropPinManual').addEventListener('click', function() {
+            // Clear any existing click handler
+            map.off('click');
+            
+            // Set cursor style
+            map.getContainer().style.cursor = 'crosshair';
+            
+            // Add click handler
+            map.once('click', function(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+                
+                drawnItems.clearLayers();
+                const marker = L.marker([lat, lng]).addTo(drawnItems);
+                projectData.coordinates = [[lat, lng]];
+                
+                // Update coordinate fields
+                document.getElementById('lat').value = lat.toFixed(6);
+                document.getElementById('lng').value = lng.toFixed(6);
+                
+                updateUI();
+                map.getContainer().style.cursor = '';
+            });
+            
+            alert("Click on the map to place your pin");
         });
 
         // User level selector
@@ -307,27 +414,51 @@
                 'forest': [
                     'Estimated tree cover (%):',
                     'Dominant tree species:',
-                    'Signs of deforestation?'
+                    'Signs of deforestation?',
+                    'Presence of myrtle wilt?',
+                    'Evidence of logging?'
                 ],
                 'wetland': [
                     'Water source:',
                     'Seasonal fluctuations:',
-                    'Invasive species present?'
+                    'Invasive species present?',
+                    'Water quality issues?',
+                    'Frog populations observed?'
                 ],
                 'grassland': [
                     'Grass height (avg):',
                     'Grazing pressure:',
-                    'Fire frequency:'
+                    'Fire frequency:',
+                    'Native grass species present?',
+                    'Evidence of kangaroo activity?'
                 ],
                 'urban': [
                     'Green space (%):',
                     'Pollution sources:',
-                    'Wildlife presence:'
+                    'Wildlife presence:',
+                    'Stormwater management:',
+                    'Community use intensity:'
                 ],
                 'coastal': [
                     'Tidal range:',
                     'Erosion signs:',
-                    'Visitor pressure:'
+                    'Visitor pressure:',
+                    'Seaweed accumulation:',
+                    'Shorebird nesting areas:'
+                ],
+                'alpine': [
+                    'Elevation (m):',
+                    'Snow cover duration:',
+                    'Vegetation type:',
+                    'Erosion signs:',
+                    'Climate change impacts:'
+                ],
+                'agricultural': [
+                    'Land use type:',
+                    'Soil health indicators:',
+                    'Water management:',
+                    'Pesticide use:',
+                    'Wildlife corridors:'
                 ]
             };
 
@@ -347,15 +478,84 @@
             updateThreatList();
         });
 
-        const defaultThreats = [
-            "Climate change",
-            "Invasive species",
-            "Pollution",
-            "Urban development",
-            "Overharvesting",
-            "Soil erosion",
-            "Habitat fragmentation"
+        // Tasmanian/Australian specific threats with descriptions
+        const tasmanianThreats = [
+            {
+                name: "Climate change impacts",
+                description: "Rising temperatures, changing rainfall patterns affecting native species",
+                severity: 4
+            },
+            {
+                name: "Invasive species (e.g., foxes, rabbits)",
+                description: "Introduced predators and competitors threatening native wildlife",
+                severity: 5
+            },
+            {
+                name: "Myrtle wilt disease",
+                description: "Fungal disease affecting Tasmanian myrtle (Nothofagus cunninghamii)",
+                severity: 4
+            },
+            {
+                name: "Deforestation and logging",
+                description: "Clearing of native forests for timber and agriculture",
+                severity: 4
+            },
+            {
+                name: "Urban expansion",
+                description: "Habitat loss due to residential and commercial development",
+                severity: 3
+            },
+            {
+                name: "Agricultural runoff",
+                description: "Nutrient pollution affecting waterways and wetlands",
+                severity: 3
+            },
+            {
+                name: "Alpine ecosystem degradation",
+                description: "Climate change and human activity impacting fragile alpine areas",
+                severity: 4
+            },
+            {
+                name: "Coastal erosion",
+                description: "Sea level rise and storm surges affecting coastal habitats",
+                severity: 3
+            },
+            {
+                name: "Overgrazing by native wildlife",
+                description: "High densities of wallabies and wombats impacting vegetation",
+                severity: 3
+            },
+            {
+                name: "Phytophthora root rot",
+                description: "Soil-borne disease affecting a range of native plants",
+                severity: 3
+            },
+            {
+                name: "Fire regime changes",
+                description: "Altered fire frequency and intensity disrupting ecosystems",
+                severity: 4
+            },
+            {
+                name: "Marine debris pollution",
+                description: "Plastics and other waste impacting coastal and marine life",
+                severity: 3
+            }
         ];
+
+        document.getElementById('addDefaultThreats').addEventListener('click', function() {
+            // Only add threats that aren't already in the list
+            const existingThreats = projectData.threats.map(t => t.name);
+            tasmanianThreats.forEach(threat => {
+                if (!existingThreats.includes(threat.name)) {
+                    projectData.threats.push({
+                        name: threat.name,
+                        description: threat.description,
+                        severity: threat.severity
+                    });
+                }
+            });
+            updateThreatList();
+        });
 
         function updateThreatList() {
             let html = '';
@@ -371,6 +571,7 @@
                         <option value="5" ${threat.severity === 5 ? 'selected' : ''}>5 - Critical</option>
                     </select>
                     <button class="remove-threat" data-index="${i}">×</button>
+                    ${threat.description ? `<div class="threat-description">${threat.description}</div>` : ''}
                 </div>`;
             });
             document.getElementById('threatList').innerHTML = html;
@@ -393,8 +594,10 @@
         document.getElementById('addThreat').addEventListener('click', function() {
             const name = prompt("Enter threat name:");
             if (name) {
+                const description = prompt("Enter threat description (optional):");
                 projectData.threats.push({
                     name: name,
+                    description: description,
                     severity: 3
                 });
                 updateThreatList();
@@ -408,15 +611,97 @@
             updateActionList();
         });
 
-        const defaultActions = [
-            "Revegetation",
-            "Erosion control",
-            "Invasive species removal",
-            "Protected area designation",
-            "Community education",
-            "Monitoring program",
-            "Habitat restoration"
+        // Tasmanian/Australian specific management actions with descriptions
+        const tasmanianActions = [
+            {
+                name: "Revegetation with native species",
+                description: "Planting locally indigenous vegetation to restore habitat",
+                cost: 5000,
+                time: 24
+            },
+            {
+                name: "Fox and feral cat control",
+                description: "Implementing predator control programs to protect native wildlife",
+                cost: 15000,
+                time: 12
+            },
+            {
+                name: "Myrtle wilt monitoring program",
+                description: "Regular surveys to detect and manage disease outbreaks",
+                cost: 8000,
+                time: 12
+            },
+            {
+                name: "Riparian zone restoration",
+                description: "Improving streamside vegetation to protect waterways",
+                cost: 10000,
+                time: 18
+            },
+            {
+                name: "Community education program",
+                description: "Engaging locals in conservation through workshops and materials",
+                cost: 5000,
+                time: 6
+            },
+            {
+                name: "Weed eradication program",
+                description: "Targeted removal of invasive plant species",
+                cost: 7000,
+                time: 12
+            },
+            {
+                name: "Wildlife corridor establishment",
+                description: "Creating habitat links between fragmented areas",
+                cost: 20000,
+                time: 36
+            },
+            {
+                name: "Erosion control measures",
+                description: "Installing silt fences, revegetation to prevent soil loss",
+                cost: 12000,
+                time: 12
+            },
+            {
+                name: "Fire management plan",
+                description: "Developing controlled burn strategies for ecosystem health",
+                cost: 10000,
+                time: 12
+            },
+            {
+                name: "Water quality monitoring",
+                description: "Regular testing and reporting on aquatic ecosystem health",
+                cost: 6000,
+                time: 6
+            },
+            {
+                name: "Nest box installation",
+                description: "Providing artificial hollows for wildlife where natural ones are scarce",
+                cost: 3000,
+                time: 3
+            },
+            {
+                name: "Coastal dune restoration",
+                description: "Stabilizing dunes with native vegetation to prevent erosion",
+                cost: 15000,
+                time: 24
+            }
         ];
+
+        document.getElementById('addDefaultActions').addEventListener('click', function() {
+            // Only add actions that aren't already in the list
+            const existingActions = projectData.actions.map(a => a.name);
+            tasmanianActions.forEach(action => {
+                if (!existingActions.includes(action.name)) {
+                    projectData.actions.push({
+                        name: action.name,
+                        description: action.description,
+                        cost: action.cost,
+                        time: action.time
+                    });
+                }
+            });
+            updateActionList();
+        });
 
         function updateActionList() {
             let html = '';
@@ -429,6 +714,7 @@
                         <label>Timeframe (months): <input type="number" class="action-time" data-index="${i}" value="${action.time || 12}"></label>
                     </div>
                     <button class="remove-action" data-index="${i}">×</button>
+                    ${action.description ? `<div class="action-description">${action.description}</div>` : ''}
                 </div>`;
             });
             document.getElementById('actionList').innerHTML = html;
@@ -457,10 +743,15 @@
         document.getElementById('addAction').addEventListener('click', function() {
             const name = prompt("Enter action name:");
             if (name) {
+                const description = prompt("Enter action description (optional):");
+                const cost = parseInt(prompt("Estimated cost ($):") || "0");
+                const time = parseInt(prompt("Timeframe (months):") || "12");
+                
                 projectData.actions.push({
                     name: name,
-                    cost: 0,
-                    time: 12
+                    description: description,
+                    cost: cost,
+                    time: time
                 });
                 updateActionList();
             }
@@ -475,27 +766,75 @@
             const totalSeverity = projectData.threats.reduce((sum, t) => sum + t.severity, 0);
             const totalCost = projectData.actions.reduce((sum, a) => sum + a.cost, 0);
             const totalTime = Math.max(...projectData.actions.map(a => a.time), 0);
+            const actionCount = projectData.actions.length;
 
+            // More sophisticated simulation for Tasmanian context
             let effectiveness = 0;
-            if (projectData.actions.length > 0) {
-                effectiveness = Math.min(100, 70 - (totalSeverity * 5) + (projectData.actions.length * 10));
+            if (actionCount > 0) {
+                // Base effectiveness based on number and type of actions
+                const actionEffectiveness = projectData.actions.reduce((sum, a) => {
+                    let score = 5; // Base score per action
+                    // Adjust based on action type (simplified for demo)
+                    if (a.name.includes('control') || a.name.includes('eradication')) score += 3;
+                    if (a.name.includes('restoration') || a.name.includes('revegetation')) score += 4;
+                    if (a.name.includes('monitoring') || a.name.includes('education')) score += 2;
+                    return sum + score;
+                }, 0);
+                
+                // Adjust for threat severity
+                effectiveness = Math.min(100, 
+                    (actionEffectiveness * 2) - (totalSeverity * 1.5) + 
+                    (actionCount * 3) + (projectData.userLevel === 'professional' ? 10 : 0)
+                );
+            }
+
+            // Generate specific recommendations based on ecosystem
+            let recommendations = [];
+            if (projectData.ecosystem === 'forest') {
+                recommendations.push("Consider myrtle wilt monitoring if in myrtle beech areas");
+                recommendations.push("Implement wildlife corridors to combat fragmentation");
+            } else if (projectData.ecosystem === 'coastal') {
+                recommendations.push("Include dune stabilization measures");
+                recommendations.push("Monitor for marine debris accumulation");
+            } else if (projectData.ecosystem === 'alpine') {
+                recommendations.push("Focus on climate change resilience strategies");
+                recommendations.push("Implement erosion control measures on vulnerable slopes");
             }
 
             const results = `
                 <h4>Simulation Results (5-year projection)</h4>
-                <p><strong>Threat Reduction:</strong> ${Math.round(effectiveness)}% potential reduction in key threats</p>
-                <p><strong>Biodiversity Impact:</strong> ${effectiveness > 50 ? "Significant improvement likely" : "Moderate improvement possible"}</p>
+                <p><strong>Threat Reduction:</strong> ${Math.max(0, Math.round(effectiveness))}% potential reduction in key threats</p>
+                <p><strong>Biodiversity Impact:</strong> ${effectiveness > 50 ? "Significant improvement likely" : effectiveness > 30 ? "Moderate improvement possible" : "Limited improvement expected"}</p>
                 <p><strong>Total Estimated Cost:</strong> $${totalCost.toLocaleString()}</p>
                 <p><strong>Implementation Timeframe:</strong> ${totalTime} months</p>
-                <p><strong>Recommendation:</strong> ${effectiveness > 60 ? "Strongly recommended" : "Recommended with monitoring"}</p>
+                <p><strong>Recommendation:</strong> ${effectiveness > 60 ? "Strongly recommended" : effectiveness > 40 ? "Recommended with monitoring" : "Consider revising actions for greater impact"}</p>
+                
+                ${recommendations.length > 0 ? `
+                <h5>Ecosystem-Specific Recommendations:</h5>
+                <ul>
+                    ${recommendations.map(r => `<li>${r}</li>`).join('')}
+                </ul>
+                ` : ''}
+                
+                <h5>Next Steps:</h5>
+                <ul>
+                    <li>Consult with local Landcare group for on-ground support</li>
+                    <li>Check NRM South/North funding opportunities for ${projectData.ecosystem} projects</li>
+                    <li>Review Tasmanian Threatened Species List for area-specific concerns</li>
+                </ul>
             `;
 
             document.getElementById('simulationResults').innerHTML = results;
             projectData.simulation = {
-                threatReduction: effectiveness,
+                threatReduction: Math.max(0, effectiveness),
                 totalCost: totalCost,
-                timeframe: totalTime
+                timeframe: totalTime,
+                recommendations: recommendations
             };
+            
+            // Show report preview
+            document.getElementById('reportOutput').style.display = 'block';
+            document.getElementById('reportContent').innerHTML = results;
         });
 
         // Generate report
@@ -508,50 +847,128 @@
 
             // Title
             doc.setFontSize(20);
+            doc.setTextColor(46, 139, 87); // Green color
             doc.text(`EcoSim Management Report: ${projectData.name || "Untitled Project"}`, 10, 20);
+            doc.setTextColor(0, 0, 0); // Back to black
 
             // Project details
             doc.setFontSize(12);
             doc.text(`Prepared for: ${projectData.userLevel} user`, 10, 30);
-            doc.text(`Date: ${new Date().toLocaleDateString()}`, 10, 40);
+            doc.text(`Date: ${new Date().toLocaleDateString('en-AU')}`, 10, 40);
+            doc.text(`Location: ${projectData.coordinates[0] ? projectData.coordinates[0].join(', ') : 'Not specified'}`, 10, 50);
+            doc.text(`Region: Tasmania, Australia`, 10, 60);
 
             // Ecosystem info
             doc.setFontSize(14);
-            doc.text("1. Site Assessment", 10, 50);
+            doc.text("1. Site Assessment", 10, 80);
             doc.setFontSize(12);
-            doc.text(`Ecosystem Type: ${projectData.ecosystem}`, 10, 60);
-            doc.text(`Location Coordinates: ${JSON.stringify(projectData.coordinates)}`, 10, 70);
+            doc.text(`Ecosystem Type: ${projectData.ecosystem.charAt(0).toUpperCase() + projectData.ecosystem.slice(1)}`, 10, 90);
 
             // Threats
             doc.setFontSize(14);
-            doc.text("2. Threat Analysis", 10, 90);
-            const threatRows = projectData.threats.map(t => [t.name, t.severity]);
+            doc.text("2. Threat Analysis", 10, 110);
+            const threatRows = projectData.threats.map(t => [t.name, t.severity, t.description || '']);
             doc.autoTable({
-                startY: 100,
-                head: [['Threat', 'Severity (1-5)']],
-                body: threatRows
+                startY: 120,
+                head: [['Threat', 'Severity (1-5)', 'Description']],
+                body: threatRows,
+                columnStyles: {
+                    0: {cellWidth: 60},
+                    1: {cellWidth: 30},
+                    2: {cellWidth: 'auto'}
+                },
+                styles: {
+                    fontSize: 10,
+                    cellPadding: 3,
+                    overflow: 'linebreak'
+                }
             });
 
             // Actions
             doc.setFontSize(14);
             doc.text("3. Recommended Actions", 10, doc.lastAutoTable.finalY + 20);
-            const actionRows = projectData.actions.map(a => [a.name, `$${a.cost}`, `${a.time} months`]);
+            const actionRows = projectData.actions.map(a => [a.name, `$${a.cost.toLocaleString()}`, `${a.time} months`, a.description || '']);
             doc.autoTable({
                 startY: doc.lastAutoTable.finalY + 30,
-                head: [['Action', 'Cost', 'Timeframe']],
-                body: actionRows
+                head: [['Action', 'Cost', 'Timeframe', 'Description']],
+                body: actionRows,
+                columnStyles: {
+                    0: {cellWidth: 50},
+                    1: {cellWidth: 25},
+                    2: {cellWidth: 25},
+                    3: {cellWidth: 'auto'}
+                },
+                styles: {
+                    fontSize: 10,
+                    cellPadding: 3,
+                    overflow: 'linebreak'
+                }
             });
 
             // Simulation results
             doc.setFontSize(14);
             doc.text("4. Projected Outcomes", 10, doc.lastAutoTable.finalY + 20);
             doc.setFontSize(12);
-            doc.text(`Threat Reduction: ${Math.round(projectData.simulation.threatReduction)}%`, 10, doc.lastAutoTable.finalY + 30);
-            doc.text(`Total Cost: $${projectData.simulation.totalCost.toLocaleString()}`, 10, doc.lastAutoTable.finalY + 40);
-            doc.text(`Timeframe: ${projectData.simulation.timeframe} months`, 10, doc.lastAutoTable.finalY + 50);
+            doc.text(`• Threat Reduction: ${Math.round(projectData.simulation.threatReduction)}%`, 15, doc.lastAutoTable.finalY + 30);
+            doc.text(`• Total Cost: $${projectData.simulation.totalCost.toLocaleString()}`, 15, doc.lastAutoTable.finalY + 40);
+            doc.text(`• Timeframe: ${projectData.simulation.timeframe} months`, 15, doc.lastAutoTable.finalY + 50);
+            
+            // Recommendations
+            if (projectData.simulation.recommendations && projectData.simulation.recommendations.length > 0) {
+                doc.setFontSize(14);
+                doc.text("5. Specific Recommendations", 10, doc.lastAutoTable.finalY + 70);
+                doc.setFontSize(12);
+                
+                let yPos = doc.lastAutoTable.finalY + 80;
+                projectData.simulation.recommendations.forEach((rec, i) => {
+                    if (yPos > 280) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    doc.text(`• ${rec}`, 15, yPos);
+                    yPos += 10;
+                });
+            }
+
+            // Tasmanian context information
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.text("Tasmanian Environmental Context", 10, 20);
+            doc.setFontSize(12);
+            
+            const tasInfo = [
+                "Tasmania contains some of Australia's most unique ecosystems, with many endemic species.",
+                "Key conservation priorities include:",
+                "- Temperate rainforests (particularly myrtle beech communities)",
+                "- Alpine and subalpine ecosystems",
+                "- Coastal heathlands and dunes",
+                "- Wetlands and riparian zones",
+                "",
+                "Common threats in Tasmania:",
+                "- Climate change impacts on sensitive species",
+                "- Invasive species (foxes, cats, rabbits, wasps)",
+                "- Phytophthora root rot and myrtle wilt diseases",
+                "- Habitat fragmentation from agriculture and development",
+                "",
+                "Useful resources:",
+                "- NRM South/North (Natural Resource Management)",
+                "- Tasmanian Land Conservancy",
+                "- DPIPWE Threatened Species Section",
+                "- Tasmanian Parks and Wildlife Service"
+            ];
+            
+            let yPos = 30;
+            tasInfo.forEach(line => {
+                if (yPos > 280) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                doc.text(line, line.startsWith("-") ? 15 : 10, yPos);
+                yPos += line === "" ? 5 : 10;
+            });
 
             // Save the PDF
-            doc.save(`EcoSim_Report_${projectData.name || "Project"}.pdf`);
+            doc.save(`EcoSim_Report_${projectData.name || "Project"}_${new Date().toISOString().slice(0,10)}.pdf`);
         }
 
         // File management
@@ -567,6 +984,8 @@
                     simulation: null
                 };
                 drawnItems.clearLayers();
+                document.getElementById('lat').value = '';
+                document.getElementById('lng').value = '';
                 resetUI();
             }
         });
@@ -640,6 +1059,8 @@
             drawnItems.clearLayers();
             if (projectData.coordinates.length === 1) {
                 L.marker(projectData.coordinates[0]).addTo(drawnItems);
+                document.getElementById('lat').value = projectData.coordinates[0][0];
+                document.getElementById('lng').value = projectData.coordinates[0][1];
             } else if (projectData.coordinates.length > 1) {
                 L.polygon(projectData.coordinates).addTo(drawnItems);
             }
@@ -666,12 +1087,26 @@
             if (projectData.simulation) {
                 document.getElementById('simulationResults').style.display = 'block';
                 document.getElementById('generateReport').disabled = false;
-                document.getElementById('simulationResults').innerHTML = `
+                document.getElementById('reportOutput').style.display = 'block';
+                
+                let results = `
                     <h4>Simulation Results (Loaded from Project)</h4>
                     <p><strong>Threat Reduction:</strong> ${Math.round(projectData.simulation.threatReduction)}%</p>
                     <p><strong>Total Cost:</strong> $${projectData.simulation.totalCost.toLocaleString()}</p>
                     <p><strong>Timeframe:</strong> ${projectData.simulation.timeframe} months</p>
                 `;
+                
+                if (projectData.simulation.recommendations && projectData.simulation.recommendations.length > 0) {
+                    results += `
+                        <h5>Recommendations:</h5>
+                        <ul>
+                            ${projectData.simulation.recommendations.map(r => `<li>${r}</li>`).join('')}
+                        </ul>
+                    `;
+                }
+                
+                document.getElementById('simulationResults').innerHTML = results;
+                document.getElementById('reportContent').innerHTML = results;
             }
         }
 
@@ -681,6 +1116,7 @@
             document.getElementById('threatForm').style.display = 'none';
             document.getElementById('actionForm').style.display = 'none';
             document.getElementById('simulationResults').style.display = 'none';
+            document.getElementById('reportOutput').style.display = 'none';
 
             // Disable all buttons except first
             document.getElementById('analyzeThreats').disabled = true;

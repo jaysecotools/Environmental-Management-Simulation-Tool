@@ -394,6 +394,13 @@
             background-color: var(--warning);
             color: var(--darker);
         }
+        /* New styles for improved mobile experience */
+        .mobile-hidden {
+            display: initial;
+        }
+        .mobile-visible {
+            display: none;
+        }
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
@@ -403,6 +410,20 @@
             }
             #map {
                 height: 400px;
+            }
+            .mobile-hidden {
+                display: none;
+            }
+            .mobile-visible {
+                display: initial;
+            }
+            .file-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .file-actions button {
+                width: 100%;
+                margin: 0.25rem 0;
             }
         }
     </style>
@@ -549,20 +570,20 @@
                 <h3><i class="fas fa-map"></i> Project Area</h3>
                 <div id="map"></div>
                 <div id="mapControls" style="margin-top: 1rem;">
-                    <button id="drawPolygon"><i class="fas fa-draw-polygon"></i> Draw Area</button>
-                    <button id="dropPin"><i class="fas fa-map-marker-alt"></i> Drop Pin at My Location</button>
-                    <button id="dropPinManual"><i class="fas fa-map-pin"></i> Drop Pin Manually</button>
-                    <button id="clearMap" class="danger"><i class="fas fa-trash-alt"></i> Clear Map</button>
+                    <button id="drawPolygon"><i class="fas fa-draw-polygon"></i> <span class="mobile-hidden">Draw Area</span></button>
+                    <button id="dropPin"><i class="fas fa-map-marker-alt"></i> <span class="mobile-hidden">Drop Pin at My Location</span></button>
+                    <button id="dropPinManual"><i class="fas fa-map-pin"></i> <span class="mobile-hidden">Drop Pin Manually</span></button>
+                    <button id="clearMap" class="danger"><i class="fas fa-trash-alt"></i> <span class="mobile-hidden">Clear Map</span></button>
                 </div>
                 <div id="contentArea" style="margin-top: 1.5rem;">
                     <h4><i class="fas fa-crosshairs"></i> Enter Coordinates</h4>
                     <div class="coord-input">
                         <label>Latitude: </label>
-                        <input type="text" id="lat" placeholder="-41.0529 (Tasmania approx.)">
+                        <input type="text" id="lat" placeholder="-41.0529 (Tasmania approx.)" pattern="-?\d{1,3}\.\d{1,6}">
                     </div>
                     <div class="coord-input">
                         <label>Longitude: </label>
-                        <input type="text" id="lng" placeholder="145.9066 (Tasmania approx.)">
+                        <input type="text" id="lng" placeholder="145.9066 (Tasmania approx.)" pattern="-?\d{1,3}\.\d{1,6}">
                     </div>
                     <button id="addMarker"><i class="fas fa-plus"></i> Add Marker</button>
                     <p class="help-text">Example Tasmanian locations: Hobart (-42.8821, 147.3272), Launceston (-41.4332, 147.1441), Cradle Mountain (-41.6851, 145.9499)</p>
@@ -697,6 +718,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
 
     <script>
+        // Constants for configuration
+        const TASMANIA_BOUNDS = {
+            minLat: -43.7,
+            maxLat: -40.3,
+            minLng: 144.5,
+            maxLng: 148.5
+        };
+        
         // Initialize the map centered on Tasmania
         const map = L.map('map').setView([-41.4545, 145.9707], 7);
         
@@ -801,25 +830,30 @@
 
         // Calculate area in hectares
         function calculateArea(latlngs) {
-            // Convert to GeoJSON format
-            const polygon = {
-                type: "Polygon",
-                coordinates: [latlngs.map(ll => [ll.lng, ll.lat])]
-            };
-            
-            // Calculate area in square meters
-            const area = turf.area(polygon);
-            
-            // Convert to hectares
-            projectData.area = area / 10000;
-            
-            // Update UI
-            document.getElementById('areaValue').textContent = projectData.area.toFixed(2);
-            document.getElementById('areaCalculation').style.display = 'block';
-            
-            // Update assessment form if open
-            if (document.getElementById('siteSize')) {
-                document.getElementById('siteSize').value = projectData.area.toFixed(2);
+            try {
+                // Convert to GeoJSON format
+                const polygon = {
+                    type: "Polygon",
+                    coordinates: [latlngs.map(ll => [ll.lng, ll.lat])]
+                };
+                
+                // Calculate area in square meters
+                const area = turf.area(polygon);
+                
+                // Convert to hectares
+                projectData.area = area / 10000;
+                
+                // Update UI
+                document.getElementById('areaValue').textContent = projectData.area.toFixed(2);
+                document.getElementById('areaCalculation').style.display = 'block';
+                
+                // Update assessment form if open
+                if (document.getElementById('siteSize')) {
+                    document.getElementById('siteSize').value = projectData.area.toFixed(2);
+                }
+            } catch (err) {
+                console.error("Error calculating area:", err);
+                showToast("Error calculating area. Please try drawing again.", "error");
             }
         }
 
@@ -834,45 +868,71 @@
             updateUI();
         });
 
-        // Add marker button
+        // Add marker button with improved validation
         document.getElementById('addMarker').addEventListener('click', function() {
-            const lat = parseFloat(document.getElementById('lat').value);
-            const lng = parseFloat(document.getElementById('lng').value);
+            const latInput = document.getElementById('lat').value.trim();
+            const lngInput = document.getElementById('lng').value.trim();
             
-            if (!isNaN(lat) && !isNaN(lng)) {
-                if (lat < -43.7 || lat > -40.3 || lng < 144.5 || lng > 148.5) {
-                    if (!confirm("These coordinates appear to be outside Tasmania. Continue?")) {
-                        return;
-                    }
-                }
-                
-                drawnItems.clearLayers();
-                const marker = L.marker([lat, lng]).addTo(drawnItems);
-                projectData.coordinates = [[lat, lng]];
-                projectData.area = 0;
-                document.getElementById('areaCalculation').style.display = 'none';
-                updateUI();
-                map.setView([lat, lng], 13);
-            } else {
-                showToast("Please enter valid coordinates", "error");
+            if (!latInput || !lngInput) {
+                showToast("Please enter both latitude and longitude", "error");
+                return;
             }
+            
+            const lat = parseFloat(latInput);
+            const lng = parseFloat(lngInput);
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                showToast("Please enter valid numeric coordinates", "error");
+                return;
+            }
+            
+            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                showToast("Coordinates out of valid range (Lat: -90 to 90, Lng: -180 to 180)", "error");
+                return;
+            }
+            
+            // Check if in Tasmania
+            if (!isInTasmania(lat, lng)) {
+                if (!confirm("These coordinates appear to be outside Tasmania. Continue?")) {
+                    return;
+                }
+            }
+            
+            drawnItems.clearLayers();
+            const marker = L.marker([lat, lng]).addTo(drawnItems);
+            projectData.coordinates = [[lat, lng]];
+            projectData.area = 0;
+            document.getElementById('areaCalculation').style.display = 'none';
+            updateUI();
+            map.setView([lat, lng], 13);
         });
+
+        function isInTasmania(lat, lng) {
+            return lat >= TASMANIA_BOUNDS.minLat && 
+                   lat <= TASMANIA_BOUNDS.maxLat && 
+                   lng >= TASMANIA_BOUNDS.minLng && 
+                   lng <= TASMANIA_BOUNDS.maxLng;
+        }
 
         // Drop pin at current location
         document.getElementById('dropPin').addEventListener('click', function() {
-            if (navigator.geolocation) {
-                this.innerHTML = '<div class="loading"></div> Locating...';
-                this.disabled = true;
-                
-                navigator.geolocation.getCurrentPosition(function(position) {
+            if (!navigator.geolocation) {
+                showToast("Geolocation is not supported by your browser", "error");
+                return;
+            }
+            
+            this.innerHTML = '<div class="loading"></div> Locating...';
+            this.disabled = true;
+            
+            navigator.geolocation.getCurrentPosition(
+                position => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     
                     // Check if in Tasmania
-                    if (lat < -43.7 || lat > -40.3 || lng < 144.5 || lng > 148.5) {
+                    if (!isInTasmania(lat, lng)) {
                         if (!confirm("Your location appears to be outside Tasmania. Continue with this location?")) {
-                            document.getElementById('dropPin').innerHTML = '<i class="fas fa-map-marker-alt"></i> Drop Pin at My Location';
-                            document.getElementById('dropPin').disabled = false;
+                            resetDropPinButton();
                             return;
                         }
                     }
@@ -889,19 +949,22 @@
                     
                     updateUI();
                     map.setView([lat, lng], 13);
-                    
-                    document.getElementById('dropPin').innerHTML = '<i class="fas fa-map-marker-alt"></i> Drop Pin at My Location';
-                    document.getElementById('dropPin').disabled = false;
-                }, function(error) {
+                    resetDropPinButton();
+                },
+                error => {
                     showToast("Unable to get your location: " + error.message, "error");
-                    document.getElementById('dropPin').innerHTML = '<i class="fas fa-map-marker-alt"></i> Drop Pin at My Location';
-                    document.getElementById('dropPin').disabled = false;
-                }, {
+                    resetDropPinButton();
+                },
+                {
                     enableHighAccuracy: true,
-                    timeout: 10000
-                });
-            } else {
-                showToast("Geolocation is not supported by your browser", "error");
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+            
+            function resetDropPinButton() {
+                document.getElementById('dropPin').innerHTML = '<i class="fas fa-map-marker-alt"></i> <span class="mobile-hidden">Drop Pin at My Location</span>';
+                document.getElementById('dropPin').disabled = false;
             }
         });
 
@@ -975,18 +1038,25 @@
 
         // Save assessment
         document.getElementById('saveAssessment').addEventListener('click', function() {
-            projectData.assessment = {
-                size: parseFloat(document.getElementById('siteSize').value) || 0,
-                condition: document.getElementById('siteCondition').value,
-                protection: document.getElementById('protectionStatus').value,
-                completed: true
-            };
-            
-            projectData.condition = projectData.assessment.condition;
-            projectData.protection = projectData.assessment.protection;
-            
-            showToast("Assessment saved successfully", "success");
-            document.getElementById('analyzeThreats').disabled = false;
+            try {
+                projectData.assessment = {
+                    size: parseFloat(document.getElementById('siteSize').value) || 0,
+                    condition: document.getElementById('siteCondition').value,
+                    protection: document.getElementById('protectionStatus').value,
+                    completed: true
+                };
+                
+                projectData.condition = projectData.assessment.condition;
+                projectData.protection = projectData.assessment.protection;
+                
+                document.getElementById('analyzeThreats').disabled = false;
+
+                showToast("Assessment saved successfully", "success");
+                document.getElementById('analyzeThreats').disabled = false;
+            } catch (err) {
+                console.error("Error saving assessment:", err);
+                showToast("Error saving assessment", "error");
+            }
         });
 
         // Ecosystem type change
@@ -996,6 +1066,7 @@
         });
 
         function updateCustomQuestions() {
+            // Question templates for each ecosystem type
             const questions = {
                 'wet-eucalypt': [
                     {text: 'Dominant eucalypt species:', type: 'text', id: 'q0'},
@@ -1112,7 +1183,7 @@
             });
         }
 
-        // Threat analysis toggle
+        // Threat analysis toggle - FIXED THIS FUNCTION
         document.getElementById('analyzeThreats').addEventListener('click', function() {
             const content = document.getElementById('threatForm');
             const isExpanded = content.classList.contains('expanded');
@@ -1126,7 +1197,7 @@
                 
                 content.classList.add('expanded');
                 this.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Threats';
-                document.getElementById('selectActions').disabled = false;
+                document.getElementById('selectActions').disabled = false; // ENABLE THE ACTIONS BUTTON
             } else {
                 content.classList.remove('expanded');
                 this.innerHTML = '<i class="fas fa-search"></i> Analyze Threats';
@@ -1230,83 +1301,94 @@
         ];
 
         document.getElementById('addDefaultThreats').addEventListener('click', function() {
-            // Filter threats that apply to current ecosystem
-            const applicableThreats = tasmanianThreats.filter(threat => 
-                threat.appliesTo.includes(projectData.ecosystem) || threat.appliesTo.includes("all")
-            );
-            
-            // Only add threats that aren't already in the list
-            const existingThreats = projectData.threats.map(t => t.name);
-            
-            let addedCount = 0;
-            applicableThreats.forEach(threat => {
-                if (!existingThreats.includes(threat.name)) {
-                    projectData.threats.push({
-                        name: threat.name,
-                        description: threat.description,
-                        severity: threat.severity,
-                        appliesTo: threat.appliesTo
-                    });
-                    addedCount++;
+            try {
+                // Filter threats that apply to current ecosystem
+                const applicableThreats = tasmanianThreats.filter(threat => 
+                    threat.appliesTo.includes(projectData.ecosystem) || threat.appliesTo.includes("all")
+                );
+                
+                // Only add threats that aren't already in the list
+                const existingThreats = projectData.threats.map(t => t.name);
+                
+                let addedCount = 0;
+                applicableThreats.forEach(threat => {
+                    if (!existingThreats.includes(threat.name)) {
+                        projectData.threats.push({
+                            name: threat.name,
+                            description: threat.description,
+                            severity: threat.severity,
+                            appliesTo: threat.appliesTo
+                        });
+                        addedCount++;
+                    }
+                });
+                
+                updateThreatList();
+                showToast(`Added ${addedCount} relevant threats for ${projectData.ecosystem} ecosystems`, "success");
+                
+                // Enable the select actions button if we have threats
+                if (projectData.threats.length > 0) {
+                    document.getElementById('selectActions').disabled = false;
                 }
-            });
-            
-            updateThreatList();
-            showToast(`Added ${addedCount} relevant threats for ${projectData.ecosystem} ecosystems`, "success");
+            } catch (err) {
+                console.error("Error adding default threats:", err);
+                showToast("Error adding threats", "error");
+            }
         });
 
         function updateThreatList() {
-            let html = '';
-            
-            if (projectData.threats.length === 0) {
-                html = '<p>No threats added yet. Click "Add Tasmanian Threats" to get started.</p>';
-            } else {
-                projectData.threats.forEach((threat, i) => {
-                    html += `
-                    <div class="threat-item">
-                        <label><input type="checkbox" checked> ${threat.name}</label>
-                        <select class="threat-severity" data-index="${i}">
-                            <option value="1" ${threat.severity === 1 ? 'selected' : ''}>1 - Minimal</option>
-                            <option value="2" ${threat.severity === 2 ? 'selected' : ''}>2 - Slight</option>
-                            <option value="3" ${threat.severity === 3 ? 'selected' : ''}>3 - Moderate</option>
-                            <option value="4" ${threat.severity === 4 ? 'selected' : ''}>4 - Severe</option>
-                            <option value="5" ${threat.severity === 5 ? 'selected' : ''}>5 - Critical</option>
-                        </select>
-                        <button class="remove-threat" data-index="${i}" title="Remove threat">×</button>
-                        ${threat.description ? `<div class="threat-description">${threat.description}</div>` : ''}
-                    </div>`;
+            try {
+                let html = '';
+                
+                if (projectData.threats.length === 0) {
+                    html = '<p>No threats added yet. Click "Add Tasmanian Threats" to get started.</p>';
+                } else {
+                    projectData.threats.forEach((threat, i) => {
+                        html += `
+                        <div class="threat-item">
+                            <label><input type="checkbox" checked> ${threat.name}</label>
+                            <select class="threat-severity" data-index="${i}">
+                                <option value="1" ${threat.severity === 1 ? 'selected' : ''}>1 - Minimal</option>
+                                <option value="2" ${threat.severity === 2 ? 'selected' : ''}>2 - Slight</option>
+                                <option value="3" ${threat.severity === 3 ? 'selected' : ''}>3 - Moderate</option>
+                                <option value="4" ${threat.severity === 4 ? 'selected' : ''}>4 - Severe</option>
+                                <option value="5" ${threat.severity === 5 ? 'selected' : ''}>5 - Critical</option>
+                            </select>
+                            <button class="remove-threat" data-index="${i}" title="Remove threat">×</button>
+                            ${threat.description ? `<div class="threat-description">${threat.description}</div>` : ''}
+                        </div>`;
+                    });
+                }
+                
+                document.getElementById('threatList').innerHTML = html;
+
+                // Add event listeners
+                document.querySelectorAll('.remove-threat').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        projectData.threats.splice(parseInt(this.dataset.index), 1);
+                        updateThreatList();
+                        showToast("Threat removed", "info");
+                        
+                        // Disable actions button if no threats left
+                        if (projectData.threats.length === 0) {
+                            document.getElementById('selectActions').disabled = true;
+                        }
+                    });
                 });
+
+                document.querySelectorAll('.threat-severity').forEach(select => {
+                    select.addEventListener('change', function() {
+                        const index = parseInt(this.dataset.index);
+                        projectData.threats[index].severity = parseInt(this.value);
+                        
+                        // Update threat in list with visual feedback
+                        this.style.borderLeft = `4px solid ${getSeverityColor(parseInt(this.value))}`;
+                    });
+                });
+            } catch (err) {
+                console.error("Error updating threat list:", err);
+                showToast("Error updating threats", "error");
             }
-            
-            document.getElementById('threatList').innerHTML = html;
-
-            // Add event listeners
-            document.querySelectorAll('.remove-threat').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    projectData.threats.splice(parseInt(this.dataset.index), 1);
-                    updateThreatList();
-                    showToast("Threat removed", "info");
-                });
-            });
-
-            document.querySelectorAll('.threat-severity').forEach(select => {
-                select.addEventListener('change', function() {
-                    const index = parseInt(this.dataset.index);
-                    projectData.threats[index].severity = parseInt(this.value);
-                    
-                    // Update threat in list with visual feedback
-                    this.style.backgroundColor = getSeverityColor(parseInt(this.value));
-                    setTimeout(() => {
-                        this.style.backgroundColor = '';
-                    }, 500);
-                });
-            });
-            
-            // Set initial colors for severity
-            document.querySelectorAll('.threat-severity').forEach(select => {
-                const severity = parseInt(select.value);
-                select.style.borderLeft = `4px solid ${getSeverityColor(severity)}`;
-            });
         }
 
         function getSeverityColor(severity) {
@@ -1321,12 +1403,20 @@
         }
 
         document.getElementById('addThreat').addEventListener('click', function() {
-            const name = prompt("Enter threat name:");
-            if (name) {
-                const description = prompt("Enter threat description (optional):");
-                const severity = parseInt(prompt("Severity level (1-5):") || "3");
+            try {
+                const name = prompt("Enter threat name:");
+                if (!name) return;
                 
-                if (severity < 1 || severity > 5 || isNaN(severity)) {
+                const description = prompt("Enter threat description (optional):");
+                const severityStr = prompt("Severity level (1-5):") || "3";
+                const severity = parseInt(severityStr);
+                
+                if (isNaN(severity)) {
+                    showToast("Please enter a valid number", "error");
+                    return;
+                }
+                
+                if (severity < 1 || severity > 5) {
                     showToast("Severity must be between 1 and 5", "error");
                     return;
                 }
@@ -1339,10 +1429,16 @@
                 
                 updateThreatList();
                 showToast("Custom threat added", "success");
+                
+                // Enable the select actions button
+                document.getElementById('selectActions').disabled = false;
+            } catch (err) {
+                console.error("Error adding custom threat:", err);
+                showToast("Error adding threat", "error");
             }
         });
 
-        // Management actions toggle
+        // Management actions toggle - FIXED THIS FUNCTION
         document.getElementById('selectActions').addEventListener('click', function() {
             const content = document.getElementById('actionForm');
             const isExpanded = content.classList.contains('expanded');
@@ -1356,7 +1452,7 @@
                 
                 content.classList.add('expanded');
                 this.innerHTML = '<i class="fas fa-eye-slash"></i> Hide Actions';
-                document.getElementById('runSimulation').disabled = false;
+                document.getElementById('runSimulation').disabled = false; // ENABLE THE SIMULATION BUTTON
             } else {
                 content.classList.remove('expanded');
                 this.innerHTML = '<i class="fas fa-check-circle"></i> Select Actions';
@@ -1505,127 +1601,162 @@
         ];
 
         document.getElementById('addDefaultActions').addEventListener('click', function() {
-            // Filter actions that apply to current ecosystem
-            const applicableActions = tasmanianActions.filter(action => 
-                action.appliesTo.includes(projectData.ecosystem) || action.appliesTo.includes("all")
-            );
-            
-            // Only add actions that address current threats
-            const currentThreats = projectData.threats.map(t => t.name);
-            const relevantActions = applicableActions.filter(action => 
-                action.mitigates.some(threat => currentThreats.includes(threat))
-            );
-            
-            // Only add actions that aren't already in the list
-            const existingActions = projectData.actions.map(a => a.name);
-            
-            let addedCount = 0;
-            relevantActions.forEach(action => {
-                if (!existingActions.includes(action.name)) {
-                    projectData.actions.push({
-                        name: action.name,
-                        description: action.description,
-                        cost: action.cost,
-                        time: action.time,
-                        effectiveness: action.effectiveness,
-                        mitigates: action.mitigates
-                    });
-                    addedCount++;
+            try {
+                // Filter actions that apply to current ecosystem
+                const applicableActions = tasmanianActions.filter(action => 
+                    action.appliesTo.includes(projectData.ecosystem) || action.appliesTo.includes("all")
+                );
+                
+                // Only add actions that address current threats
+                const currentThreats = projectData.threats.map(t => t.name);
+                const relevantActions = applicableActions.filter(action => 
+                    action.mitigates.some(threat => currentThreats.includes(threat))
+                );
+                
+                // Only add actions that aren't already in the list
+                const existingActions = projectData.actions.map(a => a.name);
+                
+                let addedCount = 0;
+                relevantActions.forEach(action => {
+                    if (!existingActions.includes(action.name)) {
+                        projectData.actions.push({
+                            name: action.name,
+                            description: action.description,
+                            cost: action.cost,
+                            time: action.time,
+                            effectiveness: action.effectiveness,
+                            mitigates: action.mitigates
+                        });
+                        addedCount++;
+                    }
+                });
+                
+                updateActionList();
+                showToast(`Added ${addedCount} relevant actions for your threats`, "success");
+                
+                // Enable the run simulation button if we have actions
+                if (projectData.actions.length > 0) {
+                    document.getElementById('runSimulation').disabled = false;
                 }
-            });
-            
-            updateActionList();
-            showToast(`Added ${addedCount} relevant actions for your threats`, "success");
+            } catch (err) {
+                console.error("Error adding default actions:", err);
+                showToast("Error adding actions", "error");
+            }
         });
 
         function updateActionList() {
-            let html = '';
-            
-            if (projectData.actions.length === 0) {
-                html = '<p>No actions added yet. Click "Add Recommended Actions" to get started.</p>';
-            } else {
-                projectData.actions.forEach((action, i) => {
-                    html += `
-                    <div class="action-item">
-                        <label><input type="checkbox" checked> ${action.name}</label>
-                        <div style="margin-top: 0.5rem;">
-                            <label>Cost ($): <input type="number" class="action-cost" data-index="${i}" value="${action.cost || 0}" min="0" step="100"></label>
-                            <label style="margin-left: 1rem;">Timeframe (months): <input type="number" class="action-time" data-index="${i}" value="${action.time || 12}" min="1" max="60"></label>
-                        </div>
-                        <button class="remove-action" data-index="${i}" title="Remove action">×</button>
-                        ${action.description ? `<div class="action-description">${action.description}</div>` : ''}
-                        ${action.mitigates ? `<div class="action-description"><strong>Addresses:</strong> ${action.mitigates.join(', ')}</div>` : ''}
-                    </div>`;
+            try {
+                let html = '';
+                
+                if (projectData.actions.length === 0) {
+                    html = '<p>No actions added yet. Click "Add Recommended Actions" to get started.</p>';
+                } else {
+                    projectData.actions.forEach((action, i) => {
+                        html += `
+                        <div class="action-item">
+                            <label><input type="checkbox" checked> ${action.name}</label>
+                            <div style="margin-top: 0.5rem;">
+                                <label>Cost ($): <input type="number" class="action-cost" data-index="${i}" value="${action.cost || 0}" min="0" step="100"></label>
+                                <label style="margin-left: 1rem;">Timeframe (months): <input type="number" class="action-time" data-index="${i}" value="${action.time || 12}" min="1" max="60"></label>
+                            </div>
+                            <button class="remove-action" data-index="${i}" title="Remove action">×</button>
+                            ${action.description ? `<div class="action-description">${action.description}</div>` : ''}
+                            ${action.mitigates ? `<div class="action-description"><strong>Addresses:</strong> ${action.mitigates.join(', ')}</div>` : ''}
+                        </div>`;
+                    });
+                }
+                
+                document.getElementById('actionList').innerHTML = html;
+
+                // Add event listeners
+                document.querySelectorAll('.remove-action').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        projectData.actions.splice(parseInt(this.dataset.index), 1);
+                        updateActionList();
+                        showToast("Action removed", "info");
+                        
+                        // Disable simulation button if no actions left
+                        if (projectData.actions.length === 0) {
+                            document.getElementById('runSimulation').disabled = true;
+                        }
+                    });
                 });
+
+                document.querySelectorAll('.action-cost').forEach(input => {
+                    input.addEventListener('change', function() {
+                        const index = parseInt(this.dataset.index);
+                        const value = parseInt(this.value);
+                        
+                        if (isNaN(value) || value < 0) {
+                            this.value = projectData.actions[index].cost;
+                            showToast("Please enter a valid positive number", "error");
+                            return;
+                        }
+                        
+                        projectData.actions[index].cost = value;
+                        
+                        // Visual feedback
+                        this.style.backgroundColor = '#e6ffe6';
+                        setTimeout(() => {
+                            this.style.backgroundColor = '';
+                        }, 500);
+                    });
+                });
+
+                document.querySelectorAll('.action-time').forEach(input => {
+                    input.addEventListener('change', function() {
+                        const index = parseInt(this.dataset.index);
+                        const value = parseInt(this.value);
+                        
+                        if (isNaN(value) || value < 1 || value > 60) {
+                            this.value = projectData.actions[index].time;
+                            showToast("Please enter a number between 1 and 60", "error");
+                            return;
+                        }
+                        
+                        projectData.actions[index].time = value;
+                        
+                        // Visual feedback
+                        this.style.backgroundColor = '#e6ffe6';
+                        setTimeout(() => {
+                            this.style.backgroundColor = '';
+                        }, 500);
+                    });
+                });
+            } catch (err) {
+                console.error("Error updating action list:", err);
+                showToast("Error updating actions", "error");
             }
-            
-            document.getElementById('actionList').innerHTML = html;
-
-            // Add event listeners
-            document.querySelectorAll('.remove-action').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    projectData.actions.splice(parseInt(this.dataset.index), 1);
-                    updateActionList();
-                    showToast("Action removed", "info");
-                });
-            });
-
-            document.querySelectorAll('.action-cost').forEach(input => {
-                input.addEventListener('change', function() {
-                    const index = parseInt(this.dataset.index);
-                    const value = parseInt(this.value);
-                    
-                    if (isNaN(value) || value < 0) {
-                        this.value = projectData.actions[index].cost;
-                        showToast("Please enter a valid positive number", "error");
-                        return;
-                    }
-                    
-                    projectData.actions[index].cost = value;
-                    
-                    // Visual feedback
-                    this.style.backgroundColor = '#e6ffe6';
-                    setTimeout(() => {
-                        this.style.backgroundColor = '';
-                    }, 500);
-                });
-            });
-
-            document.querySelectorAll('.action-time').forEach(input => {
-                input.addEventListener('change', function() {
-                    const index = parseInt(this.dataset.index);
-                    const value = parseInt(this.value);
-                    
-                    if (isNaN(value) || value < 1 || value > 60) {
-                        this.value = projectData.actions[index].time;
-                        showToast("Please enter a number between 1 and 60", "error");
-                        return;
-                    }
-                    
-                    projectData.actions[index].time = value;
-                    
-                    // Visual feedback
-                    this.style.backgroundColor = '#e6ffe6';
-                    setTimeout(() => {
-                        this.style.backgroundColor = '';
-                    }, 500);
-                });
-            });
         }
 
         document.getElementById('addAction').addEventListener('click', function() {
-            const name = prompt("Enter action name:");
-            if (name) {
-                const description = prompt("Enter action description (optional):");
-                const cost = parseInt(prompt("Estimated cost ($):") || "0");
-                const time = parseInt(prompt("Timeframe (months, 1-60):") || "12");
+            try {
+                const name = prompt("Enter action name:");
+                if (!name) return;
                 
-                if (isNaN(cost) || cost < 0) {
+                const description = prompt("Enter action description (optional):");
+                const costStr = prompt("Estimated cost ($):") || "0";
+                const timeStr = prompt("Timeframe (months, 1-60):") || "12";
+                
+                const cost = parseInt(costStr);
+                const time = parseInt(timeStr);
+                
+                if (isNaN(cost)) {
+                    showToast("Please enter a valid number for cost", "error");
+                    return;
+                }
+                
+                if (isNaN(time)) {
+                    showToast("Please enter a valid number for timeframe", "error");
+                    return;
+                }
+                
+                if (cost < 0) {
                     showToast("Cost must be a positive number", "error");
                     return;
                 }
                 
-                if (isNaN(time) || time < 1 || time > 60) {
+                if (time < 1 || time > 60) {
                     showToast("Timeframe must be between 1 and 60 months", "error");
                     return;
                 }
@@ -1639,10 +1770,16 @@
                 
                 updateActionList();
                 showToast("Custom action added", "success");
+                
+                // Enable the run simulation button
+                document.getElementById('runSimulation').disabled = false;
+            } catch (err) {
+                console.error("Error adding custom action:", err);
+                showToast("Error adding action", "error");
             }
         });
 
-        // Run simulation
+        // Run simulation - FIXED THIS FUNCTION
         document.getElementById('runSimulation').addEventListener('click', function() {
             this.innerHTML = '<div class="loading"></div> Running Simulation...';
             this.disabled = true;
@@ -1654,15 +1791,20 @@
             
             // Delay to simulate processing (in a real app, this would be actual calculations)
             setTimeout(() => {
-                runActualSimulation();
-                this.innerHTML = '<i class="fas fa-play"></i> Run Simulation';
-                this.disabled = false;
+                try {
+                    runActualSimulation();
+                    document.getElementById('generateReport').disabled = false; // ENABLE THE REPORT BUTTON
+                } catch (err) {
+                    console.error("Error running simulation:", err);
+                    showToast("Error running simulation", "error");
+                } finally {
+                    this.innerHTML = '<i class="fas fa-play"></i> Run Simulation';
+                    this.disabled = false;
+                }
             }, 1500);
         });
 
         function runActualSimulation() {
-            document.getElementById('generateReport').disabled = false;
-            
             // Calculate total threat severity
             const totalSeverity = projectData.threats.reduce((sum, t) => sum + t.severity, 0);
             const avgSeverity = totalSeverity / Math.max(1, projectData.threats.length);
@@ -1774,21 +1916,6 @@
                 </div>
             `;
 
-            // Animate the visual bars
-            setTimeout(() => {
-                document.querySelectorAll('.visual-bar').forEach((bar, i) => {
-                    if (visualData[i].reducedHeight) {
-                        setTimeout(() => {
-                            bar.style.height = `${visualData[i].reducedHeight}%`;
-                            if (visualData[i].reducedColor) {
-                                bar.style.backgroundColor = visualData[i].reducedColor;
-                                bar.classList.add('reduced');
-                            }
-                        }, i * 200);
-                    }
-                });
-            }, 500);
-            
             // Save simulation results
             projectData.simulation = {
                 threatReduction: Math.round(effectiveness),
@@ -1805,6 +1932,20 @@
             
             // Update results div
             document.getElementById('simulationResults').innerHTML = results;
+            
+            // Animate the visual bars after they've been added to the DOM
+            setTimeout(() => {
+                const bars = document.querySelectorAll('.visual-bar');
+                bars.forEach((bar, i) => {
+                    if (visualData[i]) {
+                        setTimeout(() => {
+                            bar.style.height = `${visualData[i].reducedHeight}%`;
+                            bar.style.backgroundColor = visualData[i].reducedColor;
+                            bar.classList.add('reduced');
+                        }, i * 200);
+                    }
+                });
+            }, 100);
             
             showToast("Simulation completed successfully", "success");
         }
@@ -1917,9 +2058,15 @@
             this.disabled = true;
             
             setTimeout(() => {
-                generatePDFReport();
-                this.innerHTML = '<i class="fas fa-download"></i> Generate PDF Report';
-                this.disabled = false;
+                try {
+                    generatePDFReport();
+                } catch (err) {
+                    console.error("Error generating report:", err);
+                    showToast("Error generating report", "error");
+                } finally {
+                    this.innerHTML = '<i class="fas fa-download"></i> Generate PDF Report';
+                    this.disabled = false;
+                }
             }, 1000);
         });
 
@@ -2311,34 +2458,39 @@
         });
 
         document.getElementById('saveProject').addEventListener('click', function() {
-            // Update project data from form fields
-            projectData.name = document.getElementById('projectName').value;
-            projectData.organization = document.getElementById('organization').value;
-            projectData.userLevel = document.getElementById('userLevel').value;
-            projectData.ecosystem = document.getElementById('ecosystemType').value;
-            projectData.updatedAt = new Date().toISOString();
-            
-            // Validate required fields
-            if (!projectData.name) {
-                showToast("Please enter a project name before saving", "error");
-                return;
+            try {
+                // Update project data from form fields
+                projectData.name = document.getElementById('projectName').value;
+                projectData.organization = document.getElementById('organization').value;
+                projectData.userLevel = document.getElementById('userLevel').value;
+                projectData.ecosystem = document.getElementById('ecosystemType').value;
+                projectData.updatedAt = new Date().toISOString();
+                
+                // Validate required fields
+                if (!projectData.name) {
+                    showToast("Please enter a project name before saving", "error");
+                    return;
+                }
+                
+                if (projectData.coordinates.length === 0) {
+                    showToast("Please set a project location before saving", "error");
+                    return;
+                }
+                
+                // Create a blob and download link
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `${projectData.name.replace(/[^a-z0-9]/gi, '_')}_EcoSim_Project.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                document.body.removeChild(downloadAnchor);
+                
+                showToast(`Project "${projectData.name}" saved successfully`, "success");
+            } catch (err) {
+                console.error("Error saving project:", err);
+                showToast("Error saving project", "error");
             }
-            
-            if (projectData.coordinates.length === 0) {
-                showToast("Please set a project location before saving", "error");
-                return;
-            }
-            
-            // Create a blob and download link
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `${projectData.name.replace(/[^a-z0-9]/gi, '_')}_EcoSim_Project.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            document.body.removeChild(downloadAnchor);
-            
-            showToast(`Project "${projectData.name}" saved successfully`, "success");
         });
 
         document.getElementById('loadProject').addEventListener('click', function() {
@@ -2366,8 +2518,8 @@
                         loadProjectData();
                         showToast(`Project "${projectData.name}" loaded successfully`, "success");
                     } catch (err) {
-                        showToast("Error loading project file", "error");
-                        console.error(err);
+                        console.error("Error loading project:", err);
+                        showToast("Error loading project file. Please check the file format.", "error");
                     }
                 };
                 reader.onerror = () => {
@@ -2382,134 +2534,166 @@
         });
 
         document.getElementById('shareProject').addEventListener('click', function() {
-            // Update project data from form fields
-            projectData.name = document.getElementById('projectName').value;
-            projectData.organization = document.getElementById('organization').value;
-            projectData.userLevel = document.getElementById('userLevel').value;
-            projectData.ecosystem = document.getElementById('ecosystemType').value;
-            projectData.updatedAt = new Date().toISOString();
-            
-            // Validate required fields
-            if (!projectData.name) {
-                showToast("Please enter a project name before sharing", "error");
-                return;
+            try {
+                // Update project data from form fields
+                projectData.name = document.getElementById('projectName').value;
+                projectData.organization = document.getElementById('organization').value;
+                projectData.userLevel = document.getElementById('userLevel').value;
+                projectData.ecosystem = document.getElementById('ecosystemType').value;
+                projectData.updatedAt = new Date().toISOString();
+                
+                // Validate required fields
+                if (!projectData.name) {
+                    showToast("Please enter a project name before sharing", "error");
+                    return;
+                }
+                
+                if (projectData.coordinates.length === 0) {
+                    showToast("Please set a project location before sharing", "error");
+                    return;
+                }
+                
+                // Create a shareable URL (using URL hash)
+                const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(projectData));
+                const url = window.location.href.split('#')[0] + '#' + compressed;
+                
+                // Copy to clipboard
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast("Shareable link copied to clipboard!", "success");
+                }).catch(err => {
+                    // Fallback if clipboard API fails
+                    prompt("Copy this link to share your project:", url);
+                });
+            } catch (err) {
+                console.error("Error sharing project:", err);
+                showToast("Error generating share link", "error");
             }
-            
-            if (projectData.coordinates.length === 0) {
-                showToast("Please set a project location before sharing", "error");
-                return;
-            }
-            
-            // Create a shareable URL (using URL hash)
-            const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(projectData));
-            const url = window.location.href.split('#')[0] + '#' + compressed;
-            
-            // Copy to clipboard
-            navigator.clipboard.writeText(url).then(() => {
-                showToast("Shareable link copied to clipboard!", "success");
-            }).catch(err => {
-                prompt("Copy this link to share your project:", url);
-            });
         });
 
         function loadProjectData() {
-            // Load basic info
-            document.getElementById('userLevel').value = projectData.userLevel;
-            document.getElementById('ecosystemType').value = projectData.ecosystem;
-            document.getElementById('projectName').value = projectData.name || '';
-            document.getElementById('organization').value = projectData.organization || '';
-            
-            // Load assessment data if exists
-            if (projectData.assessment) {
-                if (document.getElementById('siteSize')) {
-                    document.getElementById('siteSize').value = projectData.assessment.size || '';
-                }
-                if (document.getElementById('siteCondition')) {
-                    document.getElementById('siteCondition').value = projectData.condition || 'moderate';
-                }
-                if (document.getElementById('protectionStatus')) {
-                    document.getElementById('protectionStatus').value = projectData.protection || 'none';
-                }
-            }
-            
-            // Load map data
-            drawnItems.clearLayers();
-            if (projectData.coordinates.length === 1) {
-                L.marker(projectData.coordinates[0]).addTo(drawnItems);
-                document.getElementById('lat').value = projectData.coordinates[0][0];
-                document.getElementById('lng').value = projectData.coordinates[0][1];
-                document.getElementById('areaCalculation').style.display = 'none';
-            } else if (projectData.coordinates.length > 1) {
-                const polygon = L.polygon(projectData.coordinates, {
-                    color: '#2E8B57',
-                    fillColor: '#2E8B57',
-                    fillOpacity: 0.2
-                }).addTo(drawnItems);
+            try {
+                // Load basic info
+                document.getElementById('userLevel').value = projectData.userLevel;
+                document.getElementById('ecosystemType').value = projectData.ecosystem;
+                document.getElementById('projectName').value = projectData.name || '';
+                document.getElementById('organization').value = projectData.organization || '';
                 
-                if (projectData.area > 0) {
-                    document.getElementById('areaValue').textContent = projectData.area.toFixed(2);
-                    document.getElementById('areaCalculation').style.display = 'block';
-                }
-            }
-            
-            // Update UI based on loaded data
-            if (projectData.ecosystem) {
-                updateCustomQuestions();
+// Load assessment data if exists
+if (projectData.assessment) {
+    if (document.getElementById('siteSize')) {
+        document.getElementById('siteSize').value = projectData.assessment.size || '';
+    }
+    if (document.getElementById('siteCondition')) {
+        document.getElementById('siteCondition').value = projectData.condition || 'moderate';
+    }
+    if (document.getElementById('protectionStatus')) {
+        document.getElementById('protectionStatus').value = projectData.protection || 'none';
+    }
+    
+    // Add this new block to handle completed assessments
+    if (projectData.assessment.completed) {
+        document.getElementById('assessmentForm').classList.add('expanded');
+        document.getElementById('startAssessment').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Assessment';
+        document.getElementById('analyzeThreats').disabled = false;  // This enables the button
+    }
+}
                 
-                if (projectData.assessment && projectData.assessment.completed) {
-                    document.getElementById('assessmentForm').classList.add('expanded');
-                    document.getElementById('startAssessment').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Assessment';
-                    document.getElementById('analyzeThreats').disabled = false;
-                }
-            }
-            
-            if (projectData.threats.length > 0) {
-                document.getElementById('threatForm').classList.add('expanded');
-                document.getElementById('analyzeThreats').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Threats';
-                document.getElementById('selectActions').disabled = false;
-                updateThreatList();
-            }
-            
-            if (projectData.actions.length > 0) {
-                document.getElementById('actionForm').classList.add('expanded');
-                document.getElementById('selectActions').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Actions';
-                document.getElementById('runSimulation').disabled = false;
-                updateActionList();
-            }
-            
-            if (projectData.simulation) {
-                document.getElementById('simulationResults').classList.add('expanded');
-                document.getElementById('generateReport').disabled = false;
-                document.getElementById('reportOutput').style.display = 'block';
-                
-                let results = `
-                    <h4><i class="fas fa-chart-line"></i> Simulation Results (Loaded from Project)</h4>
-                    <p><strong>Threat Reduction:</strong> ${projectData.simulation.threatReduction}%</p>
-                    <p><strong>Total Cost:</strong> $${projectData.simulation.totalCost.toLocaleString()}</p>
-                    <p><strong>Timeframe:</strong> ${projectData.simulation.timeframe} months</p>
-                `;
-                
-                if (projectData.simulation.recommendations && projectData.simulation.recommendations.length > 0) {
-                    results += `
-                        <h5>Recommendations:</h5>
-                        <ul>
-                            ${projectData.simulation.recommendations.map(r => `<li>${r}</li>`).join('')}
-                        </ul>
-                    `;
-                }
-                
-                document.getElementById('simulationResults').innerHTML = results;
-                document.getElementById('reportContent').innerHTML = results;
-            }
-            
-            // Zoom to project area
-            if (projectData.coordinates.length > 0) {
+                // Load map data
+                drawnItems.clearLayers();
                 if (projectData.coordinates.length === 1) {
-                    map.setView(projectData.coordinates[0], 13);
-                } else {
-                    const bounds = L.latLngBounds(projectData.coordinates);
-                    map.fitBounds(bounds);
+                    L.marker(projectData.coordinates[0]).addTo(drawnItems);
+                    document.getElementById('lat').value = projectData.coordinates[0][0];
+                    document.getElementById('lng').value = projectData.coordinates[0][1];
+                    document.getElementById('areaCalculation').style.display = 'none';
+                } else if (projectData.coordinates.length > 1) {
+                    const polygon = L.polygon(projectData.coordinates, {
+                        color: '#2E8B57',
+                        fillColor: '#2E8B57',
+                        fillOpacity: 0.2
+                    }).addTo(drawnItems);
+                    
+                    if (projectData.area > 0) {
+                        document.getElementById('areaValue').textContent = projectData.area.toFixed(2);
+                        document.getElementById('areaCalculation').style.display = 'block';
+                    }
                 }
+                
+                // Update UI based on loaded data
+                if (projectData.ecosystem) {
+                    updateCustomQuestions();
+                    
+                    if (projectData.assessment && projectData.assessment.completed) {
+                        document.getElementById('assessmentForm').classList.add('expanded');
+                        document.getElementById('startAssessment').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Assessment';
+                        document.getElementById('analyzeThreats').disabled = false;
+                    }
+                }
+                
+                if (projectData.threats.length > 0) {
+                    document.getElementById('threatForm').classList.add('expanded');
+                    document.getElementById('analyzeThreats').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Threats';
+                    document.getElementById('selectActions').disabled = false;
+                    updateThreatList();
+                }
+                
+                if (projectData.actions.length > 0) {
+                    document.getElementById('actionForm').classList.add('expanded');
+                    document.getElementById('selectActions').innerHTML = '<i class="fas fa-eye-slash"></i> Hide Actions';
+                    document.getElementById('runSimulation').disabled = false;
+                    updateActionList();
+                }
+                
+                if (projectData.simulation) {
+                    document.getElementById('simulationResults').classList.add('expanded');
+                    document.getElementById('generateReport').disabled = false;
+                    document.getElementById('reportOutput').style.display = 'block';
+                    
+                    let results = `
+                        <h4><i class="fas fa-chart-line"></i> Simulation Results (Loaded from Project)</h4>
+                        <p><strong>Threat Reduction:</strong> ${projectData.simulation.threatReduction}%</p>
+                        <p><strong>Total Cost:</strong> $${projectData.simulation.totalCost.toLocaleString()}</p>
+                        <p><strong>Timeframe:</strong> ${projectData.simulation.timeframe} months</p>
+                    `;
+                    
+                    if (projectData.simulation.recommendations && projectData.simulation.recommendations.length > 0) {
+                        results += `
+                            <h5>Recommendations:</h5>
+                            <ul>
+                                ${projectData.simulation.recommendations.map(r => `<li>${r}</li>`).join('')}
+                            </ul>
+                        `;
+                    }
+                    
+                    document.getElementById('simulationResults').innerHTML = results;
+                    document.getElementById('reportContent').innerHTML = results;
+                    
+                    // Animate the visual bars for loaded simulation
+                    setTimeout(() => {
+                        const bars = document.querySelectorAll('.visual-bar');
+                        bars.forEach((bar, i) => {
+                            if (projectData.simulation.visualData[i]) {
+                                setTimeout(() => {
+                                    bar.style.height = `${projectData.simulation.visualData[i].reducedHeight}%`;
+                                    bar.style.backgroundColor = projectData.simulation.visualData[i].reducedColor;
+                                    bar.classList.add('reduced');
+                                }, i * 200);
+                            }
+                        });
+                    }, 100);
+                }
+                
+                // Zoom to project area
+                if (projectData.coordinates.length > 0) {
+                    if (projectData.coordinates.length === 1) {
+                        map.setView(projectData.coordinates[0], 13);
+                    } else {
+                        const bounds = L.latLngBounds(projectData.coordinates);
+                        map.fitBounds(bounds);
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading project data:", err);
+                showToast("Error loading project data", "error");
             }
         }
 

@@ -2072,96 +2072,91 @@
         });
 
         function generatePDFReport() {
-            const doc = new jsPDF();
-            const reportType = document.getElementById('reportType').value;
-            
-            // Set document properties
-            doc.setProperties({
-                title: `EcoSim Report: ${projectData.name || "Untitled Project"}`,
-                subject: "Environmental Management Plan",
-                author: projectData.organization || projectData.userLevel + " user",
-                keywords: "tasmania, conservation, management, " + projectData.ecosystem,
-                creator: "EcoSim Tasmanian Environmental Tool"
-            });
-            
-            // Add header
-            doc.setFontSize(20);
-            doc.setTextColor(46, 139, 87); // Green color
-            doc.text(`EcoSim Environmental Management Report`, 105, 20, {align: 'center'});
-            
-            doc.setFontSize(16);
-            doc.text(projectData.name || "Untitled Project", 105, 30, {align: 'center'});
-            doc.setTextColor(0, 0, 0); // Back to black
-            
-            // Add metadata
-            doc.setFontSize(10);
-            doc.text(`Prepared for: ${projectData.organization || projectData.userLevel + " user"}`, 14, 40);
-            doc.text(`Date: ${new Date().toLocaleDateString('en-AU')}`, 14, 45);
-            doc.text(`Region: Tasmania, Australia`, 14, 50);
-            
-            // Add logo placeholder
-            doc.setFillColor(46, 139, 87);
-            doc.roundedRect(160, 35, 35, 20, 3, 3, 'F');
-            doc.setFontSize(12);
-            doc.setTextColor(255, 255, 255);
-            doc.text("EcoSim", 177, 47, {align: 'center'});
-            doc.setTextColor(0, 0, 0);
-            
-            // Add table of contents for detailed reports
-            if (reportType !== 'basic') {
-                doc.setFontSize(12);
-                doc.text("Table of Contents", 14, 65);
-                doc.setDrawColor(46, 139, 87);
-                doc.line(14, 67, 60, 67);
-                
-                let tocY = 75;
-                const sections = [
-                    "1. Executive Summary",
-                    "2. Site Description",
-                    "3. Threat Assessment",
-                    "4. Management Actions",
-                    "5. Implementation Plan",
-                    "6. Budget Summary",
-                    "7. Monitoring & Evaluation"
-                ];
-                
-                sections.forEach((section, i) => {
-                    doc.text(section, 20, tocY + (i * 7));
-                    doc.text(`... ${i+1}`, 180, tocY + (i * 7), {align: 'right'});
-                });
-                
-                doc.addPage();
-            }
-            
-            // Executive Summary
-doc.setFontSize(14);
-doc.text("1. Executive Summary", 14, 20);
-doc.setFontSize(12);
+    const doc = new jsPDF();
+    const reportType = document.getElementById('reportType').value;
 
-let summaryText = [
-    `This report presents an environmental management plan for ${projectData.name || "the site"} located in Tasmania.`,
-    `The primary ecosystem type is ${getEcosystemName(projectData.ecosystem)} with a current condition rating of ${projectData.condition}.`,
-    `Key threats identified include: ${projectData.threats.slice(0, 3).map(t => t.name).join(', ')}.`,
-    `The proposed management actions are projected to achieve ${projectData.simulation.threatReduction}% threat reduction over ${Math.ceil(projectData.simulation.timeframe/12)} years.`
-];
-
-let yPos = 30;
-summaryText.forEach(line => {
-    // Split long lines into multiple lines if needed
-    const lines = doc.splitTextToSize(line, 170);
-    
-    lines.forEach(textLine => {
-        if (yPos > 280) {
-            doc.addPage();
-            yPos = 20;
-        }
-        doc.text(textLine, 20, yPos);
-        yPos += 7; // Add consistent spacing between lines
+    // Set document properties
+    doc.setProperties({
+        title: `EcoSim Report: ${projectData.name || "Untitled Project"}`,
+        subject: "Environmental Management Plan",
+        author: projectData.organization || projectData.userLevel + " user",
+        keywords: "tasmania, conservation, management, " + projectData.ecosystem,
+        creator: "EcoSim Tasmanian Environmental Tool"
     });
-    
-    // Add extra space between paragraphs
-    yPos += 3;
-});
+
+    // ====== ADD TABLE OF CONTENTS TO BASIC REPORT ======
+    doc.setFontSize(20);
+    doc.setTextColor(46, 139, 87); // Green color
+    doc.text(`EcoSim Environmental Management Report`, 105, 20, { align: 'center' });
+
+    doc.setFontSize(16);
+    doc.text(projectData.name || "Untitled Project", 105, 30, { align: 'center' });
+    doc.setTextColor(0, 0, 0); // Back to black
+
+    // Metadata
+    doc.setFontSize(10);
+    doc.text(`Prepared for: ${projectData.organization || projectData.userLevel + " user"}`, 14, 40);
+    doc.text(`Date: ${new Date().toLocaleDateString('en-AU')}`, 14, 45);
+    doc.text(`Region: Tasmania, Australia`, 14, 50);
+
+    // Logo placeholder
+    doc.setFillColor(46, 139, 87);
+    doc.roundedRect(160, 35, 35, 20, 3, 3, 'F');
+    doc.setFontSize(12);
+    doc.setTextColor(255, 255, 255);
+    doc.text("EcoSim", 177, 47, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+
+    // ==== ALWAYS ADD TOC (EVEN FOR BASIC REPORT) ====
+    doc.setFontSize(12);
+    doc.text("Table of Contents", 14, 65);
+    doc.setDrawColor(46, 139, 87);
+    doc.line(14, 67, 60, 67);
+
+    let tocY = 75;
+    const sections = [
+        "1. Executive Summary",
+        "2. Site Description",
+        "3. Threat Assessment",
+        "4. Management Actions",
+        "5. Implementation Plan",
+        "6. Budget Summary",
+        "7. Monitoring & Evaluation"
+    ];
+
+    sections.forEach((section, i) => {
+        doc.text(section, 20, tocY + (i * 7));
+        doc.text(`... ${i + 1}`, 180, tocY + (i * 7), { align: 'right' });
+    });
+
+    doc.addPage(); // Now, executive summary starts on page 2 (consistent with other reports)
+
+    // ==== EXECUTIVE SUMMARY (NOW ON PAGE 2, LIKE OTHER REPORTS) ====
+    doc.setFontSize(14);
+    doc.text("1. Executive Summary", 14, 20);
+    doc.setFontSize(12);
+
+    let summaryText = [
+        `This report presents an environmental management plan for ${projectData.name || "the site"} located in Tasmania.`,
+        `The primary ecosystem type is ${getEcosystemName(projectData.ecosystem)} with a current condition rating of ${projectData.condition}.`,
+        `Key threats identified include: ${projectData.threats.slice(0, 3).map(t => t.name).join(', ')}.`,
+        `The proposed management actions are projected to achieve ${projectData.simulation.threatReduction}% threat reduction over ${Math.ceil(projectData.simulation.timeframe / 12)} years.`
+    ];
+
+    let yPos = 30;
+    summaryText.forEach(line => {
+        const splitLines = doc.splitTextToSize(line, 170); // Wrap text
+        splitLines.forEach(textLine => {
+            if (yPos > 280) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.text(textLine, 20, yPos);
+            yPos += 7; // Line spacing
+        });
+        yPos += 5; // Paragraph spacing
+    });
+
             
             // Site Description
             doc.addPage();

@@ -2134,26 +2134,34 @@
             }
             
             // Executive Summary
-            doc.setFontSize(14);
-            doc.text("1. Executive Summary", 14, 20);
-            doc.setFontSize(12);
-            
-            let summaryText = [
-                `This report presents an environmental management plan for ${projectData.name || "the site"} located in Tasmania.`,
-                `The primary ecosystem type is ${getEcosystemName(projectData.ecosystem)} with a current condition rating of ${projectData.condition}.`,
-                `Key threats identified include: ${projectData.threats.slice(0, 3).map(t => t.name).join(', ')}.`,
-                `The proposed management actions are projected to achieve ${projectData.simulation.threatReduction}% threat reduction over ${Math.ceil(projectData.simulation.timeframe/12)} years.`
-            ];
-            
-            let yPos = 30;
-            summaryText.forEach(line => {
-                if (yPos > 280) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-                doc.text(line, 20, yPos, {maxWidth: 170});
-                yPos += 10;
-            });
+doc.setFontSize(14);
+doc.text("1. Executive Summary", 14, 20);
+doc.setFontSize(12);
+
+let summaryText = [
+    `This report presents an environmental management plan for ${projectData.name || "the site"} located in Tasmania.`,
+    `The primary ecosystem type is ${getEcosystemName(projectData.ecosystem)} with a current condition rating of ${projectData.condition}.`,
+    `Key threats identified include: ${projectData.threats.slice(0, 3).map(t => t.name).join(', ')}.`,
+    `The proposed management actions are projected to achieve ${projectData.simulation.threatReduction}% threat reduction over ${Math.ceil(projectData.simulation.timeframe/12)} years.`
+];
+
+let yPos = 30;
+summaryText.forEach(line => {
+    // Split long lines into multiple lines if needed
+    const lines = doc.splitTextToSize(line, 170);
+    
+    lines.forEach(textLine => {
+        if (yPos > 280) {
+            doc.addPage();
+            yPos = 20;
+        }
+        doc.text(textLine, 20, yPos);
+        yPos += 7; // Add consistent spacing between lines
+    });
+    
+    // Add extra space between paragraphs
+    yPos += 3;
+});
             
             // Site Description
             doc.addPage();

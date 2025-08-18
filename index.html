@@ -479,6 +479,7 @@
                         <label for="ecosystemType">Primary Ecosystem Type:</label>
                         <select id="ecosystemType">
                             <option value="">Select ecosystem...</option>
+                            <option value="dry-eucalypt">Dry Eucalypt Forest</option>
                             <option value="wet-eucalypt">Wet Eucalypt Forest</option>
                             <option value="rainforest">Temperate Rainforest</option>
                             <option value="wetland">Wetland</option>
@@ -1069,6 +1070,13 @@
         function updateCustomQuestions() {
             // Question templates for each ecosystem type
             const questions = {
+                'dry-eucalypt': [
+    {text: 'Dominant eucalypt species:', type: 'text', id: 'q0'},
+    {text: 'Understory type:', type: 'select', options: ['Heathy', 'Shrubby', 'Grassy', 'Sparse'], id: 'q1'},
+    {text: 'Fire history:', type: 'select', options: ['Frequent', 'Occasional', 'Rare', 'Unknown'], id: 'q2'},
+    {text: 'Evidence of dieback?', type: 'radio', options: ['Yes', 'No', 'Suspected'], id: 'q3'},
+    {text: 'Estimated tree canopy cover (%):', type: 'range', min: 0, max: 100, id: 'q4'}
+],
                 'wet-eucalypt': [
                     {text: 'Dominant eucalypt species:', type: 'text', id: 'q0'},
                     {text: 'Understory type:', type: 'select', options: ['Fern-dominated', 'Shrub-dominated', 'Mixed', 'Sparse'], id: 'q1'},
@@ -1219,7 +1227,7 @@
                 name: "Invasive predators (foxes, cats)",
                 description: "Introduced predators threatening native wildlife including ground-nesting birds and small mammals",
                 severity: 5,
-                appliesTo: ["wet-eucalypt", "rainforest", "grassland", "coastal", "alpine"]
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "rainforest", "grassland", "coastal", "alpine"]
             },
             {
                 name: "Myrtle wilt disease",
@@ -1231,19 +1239,19 @@
                 name: "Phytophthora root rot",
                 description: "Soil-borne disease affecting a range of native plants including banksias and grasstrees",
                 severity: 3,
-                appliesTo: ["wet-eucalypt", "rainforest", "grassland", "coastal"]
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "rainforest", "grassland", "coastal"]
             },
             {
                 name: "Habitat fragmentation",
                 description: "Clearing of native vegetation creating isolated patches vulnerable to edge effects",
                 severity: 4,
-                appliesTo: ["wet-eucalypt", "rainforest", "grassland"]
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "rainforest", "grassland"]
             },
             {
                 name: "Invasive herbivores (rabbits, deer)",
                 description: "Introduced herbivores competing with native wildlife and damaging vegetation",
                 severity: 4,
-                appliesTo: ["wet-eucalypt", "grassland", "coastal"]
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "grassland", "coastal"]
             },
             {
                 name: "Alpine ecosystem degradation",
@@ -1261,13 +1269,13 @@
                 name: "Overgrazing by native wildlife",
                 description: "High densities of wallabies and wombats impacting vegetation regeneration",
                 severity: 3,
-                appliesTo: ["wet-eucalypt", "grassland"]
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "grassland"]
             },
             {
                 name: "Fire regime changes",
                 description: "Altered fire frequency and intensity disrupting ecosystems",
                 severity: 4,
-                appliesTo: ["wet-eucalypt", "grassland", "coastal"]
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "grassland", "coastal"]
             },
             {
                 name: "Marine debris pollution",
@@ -1291,7 +1299,7 @@
                 name: "Invasive plants (gorse, blackberry)",
                 description: "Weeds outcompeting native vegetation and altering ecosystem function",
                 severity: 4,
-                appliesTo: ["wet-eucalypt", "grassland", "riparian"]
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "grassland", "riparian"]
             },
             {
                 name: "Changed hydrology",
@@ -1479,7 +1487,7 @@
                 cost: 15000,
                 time: 12,
                 effectiveness: 5,
-                appliesTo: ["wet-eucalypt", "rainforest", "grassland", "coastal", "alpine"],
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "rainforest", "grassland", "coastal", "alpine"],
                 mitigates: ["Invasive predators (foxes, cats)"]
             },
             {
@@ -1515,7 +1523,7 @@
                 cost: 7000,
                 time: 12,
                 effectiveness: 4,
-                appliesTo: ["wet-eucalypt", "grassland", "riparian", "coastal"],
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "grassland", "riparian", "coastal"],
                 mitigates: ["Invasive plants (gorse, blackberry)"]
             },
             {
@@ -1524,7 +1532,7 @@
                 cost: 20000,
                 time: 36,
                 effectiveness: 4,
-                appliesTo: ["wet-eucalypt", "rainforest", "grassland"],
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "rainforest", "grassland"],
                 mitigates: ["Habitat fragmentation"]
             },
             {
@@ -1542,7 +1550,7 @@
                 cost: 10000,
                 time: 12,
                 effectiveness: 4,
-                appliesTo: ["wet-eucalypt", "grassland", "coastal"],
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "grassland", "coastal"],
                 mitigates: ["Fire regime changes"]
             },
             {
@@ -1560,7 +1568,7 @@
                 cost: 3000,
                 time: 3,
                 effectiveness: 3,
-                appliesTo: ["wet-eucalypt", "rainforest", "urban"],
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "rainforest", "urban"],
                 mitigates: ["Habitat fragmentation"]
             },
             {
@@ -1587,7 +1595,7 @@
                 cost: 9000,
                 time: 12,
                 effectiveness: 4,
-                appliesTo: ["wet-eucalypt", "rainforest", "grassland", "coastal"],
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "rainforest", "grassland", "coastal"],
                 mitigates: ["Phytophthora root rot"]
             },
             {
@@ -1596,7 +1604,7 @@
                 cost: 25000,
                 time: 24,
                 effectiveness: 5,
-                appliesTo: ["wet-eucalypt", "grassland"],
+                appliesTo: ["dry-eucalypt", "wet-eucalypt", "grassland"],
                 mitigates: ["Overgrazing by native wildlife", "Invasive herbivores (rabbits, deer)"]
             }
         ];
@@ -2404,6 +2412,7 @@
 
         function getEcosystemName(ecosystem) {
             const names = {
+                'dry-eucalypt': 'Dry Eucalypt Forest',
                 'wet-eucalypt': 'Wet Eucalypt Forest',
                 'rainforest': 'Temperate Rainforest',
                 'wetland': 'Wetland',

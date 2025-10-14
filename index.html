@@ -1382,6 +1382,9 @@
                         if (projectData.threats.length === 0) {
                             document.getElementById('selectActions').disabled = true;
                         }
+                        
+                        // Refresh simulation if it exists
+                        refreshSimulationIfExists();
                     });
                 });
 
@@ -1392,6 +1395,9 @@
                         
                         // Update threat in list with visual feedback
                         this.style.borderLeft = `4px solid ${getSeverityColor(parseInt(this.value))}`;
+                        
+                        // Refresh simulation if it exists
+                        refreshSimulationIfExists();
                     });
                 });
             } catch (err) {
@@ -1441,6 +1447,9 @@
                 
                 // Enable the select actions button
                 document.getElementById('selectActions').disabled = false;
+                
+                // Refresh simulation if it exists
+                refreshSimulationIfExists();
             } catch (err) {
                 console.error("Error adding custom threat:", err);
                 showToast("Error adding threat", "error");
@@ -1688,6 +1697,9 @@
                         if (projectData.actions.length === 0) {
                             document.getElementById('runSimulation').disabled = true;
                         }
+                        
+                        // Refresh simulation if it exists
+                        refreshSimulationIfExists();
                     });
                 });
 
@@ -1709,6 +1721,9 @@
                         setTimeout(() => {
                             this.style.backgroundColor = '';
                         }, 500);
+                        
+                        // Refresh simulation if it exists
+                        refreshSimulationIfExists();
                     });
                 });
 
@@ -1730,6 +1745,9 @@
                         setTimeout(() => {
                             this.style.backgroundColor = '';
                         }, 500);
+                        
+                        // Refresh simulation if it exists
+                        refreshSimulationIfExists();
                     });
                 });
             } catch (err) {
@@ -1782,6 +1800,9 @@
                 
                 // Enable the run simulation button
                 document.getElementById('runSimulation').disabled = false;
+                
+                // Refresh simulation if it exists
+                refreshSimulationIfExists();
             } catch (err) {
                 console.error("Error adding custom action:", err);
                 showToast("Error adding action", "error");
@@ -1790,84 +1811,175 @@
 
         // Run simulation - FIXED THIS FUNCTION
         document.getElementById('runSimulation').addEventListener('click', function() {
+            // Validate we have required data
+            if (projectData.threats.length === 0) {
+                showToast("Please add threats before running simulation", "error");
+                return;
+            }
+            if (projectData.actions.length === 0) {
+                showToast("Please add management actions before running simulation", "error");
+                return;
+            }
+
             this.innerHTML = '<div class="loading"></div> Running Simulation...';
             this.disabled = true;
             
-            // Show loading state
             const resultsDiv = document.getElementById('simulationResults');
             resultsDiv.classList.add('expanded');
             resultsDiv.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> Running simulation, please wait...</p>';
             
-            // Delay to simulate processing (in a real app, this would be actual calculations)
+            // Use setTimeout to allow UI to update, then run simulation
             setTimeout(() => {
                 try {
                     runActualSimulation();
-                    document.getElementById('generateReport').disabled = false; // ENABLE THE REPORT BUTTON
+                    document.getElementById('generateReport').disabled = false;
+                    showToast("Simulation completed successfully!", "success");
                 } catch (err) {
                     console.error("Error running simulation:", err);
-                    showToast("Error running simulation", "error");
+                    showToast("Error running simulation: " + err.message, "error");
                 } finally {
                     this.innerHTML = '<i class="fas fa-play"></i> Run Simulation';
                     this.disabled = false;
                 }
-            }, 1500);
+            }, 1000);
         });
 
         function runActualSimulation() {
-            // Calculate total threat severity
-            const totalSeverity = projectData.threats.reduce((sum, t) => sum + t.severity, 0);
-            const avgSeverity = totalSeverity / Math.max(1, projectData.threats.length);
-            
-            // Calculate total action metrics
-            const totalCost = projectData.actions.reduce((sum, a) => sum + a.cost, 0);
-            const totalTime = Math.max(...projectData.actions.map(a => a.time), 0);
-            const totalEffectiveness = projectData.actions.reduce((sum, a) => sum + (a.effectiveness || 3), 0);
-            const avgEffectiveness = totalEffectiveness / Math.max(1, projectData.actions.length);
-            
-            // Calculate threat reduction percentage
-            let effectiveness = 0;
-            if (projectData.actions.length > 0) {
-                // Base effectiveness based on action quality and quantity
-                effectiveness = (totalEffectiveness * 2) - (totalSeverity * 1.2);
-                
-                // Adjust for ecosystem condition
-                if (projectData.condition === 'pristine') effectiveness *= 1.2;
-                if (projectData.condition === 'poor') effectiveness *= 0.8;
-                if (projectData.condition === 'degraded') effectiveness *= 0.6;
-                
-                // Adjust for protection status
-                if (projectData.protection === 'national') effectiveness *= 1.3;
-                if (projectData.protection === 'state') effectiveness *= 1.2;
-                if (projectData.protection === 'none') effectiveness *= 0.9;
-                
-                // Adjust for user level (professionals get better outcomes)
-                if (projectData.userLevel === 'professional') effectiveness *= 1.2;
-                if (projectData.userLevel === 'government') effectiveness *= 1.3;
-                
-                // Cap at 100%
-                effectiveness = Math.min(100, Math.max(0, effectiveness));
+            // Reset simulation data
+            projectData.simulation = {
+                threatReduction: 0,
+                totalCost: 0,
+                timeframe: 0,
+                recommendations: [],
+                visualData: [],
+                generatedAt: new Date().toISOString()
+            };
+
+            // Calculate metrics based on actual threats and actions
+            if (projectData.threats.length === 0 || projectData.actions.length === 0) {
+                showToast("Please add both threats and actions before running simulation", "error");
+                return;
             }
+
+            // Calculate total threat severity (1-5 scale)
+            const totalThreatSeverity = projectData.threats.reduce((sum, threat) => sum + threat.severity, 0);
+            const avgThreatSeverity = totalThreatSeverity / projectData.threats.length;
+
+            // Calculate total action effectiveness (1-5 scale)
+            const totalActionEffectiveness = projectData.actions.reduce((sum, action) => 
+                sum + (action.effectiveness || 3), 0);
+            const avgActionEffectiveness = totalActionEffectiveness / projectData.actions.length;
+
+            // Calculate base threat reduction (this is the key formula that was missing)
+            let threatReduction = 0;
             
-            // Generate specific recommendations based on ecosystem and threats
-            let recommendations = generateRecommendations();
+            // Base effectiveness from actions
+            threatReduction = (avgActionEffectiveness / 5) * 60; // Up to 60% from actions
             
-            // Generate visual representation data
-            const visualData = generateVisualData(totalSeverity, effectiveness);
+            // Adjust based on threat severity (higher severity = harder to reduce)
+            threatReduction *= (1 - ((avgThreatSeverity - 1) / 10)); // Reduce by 0-40% based on severity
             
+            // Adjust based on number of actions vs threats
+            const actionThreatRatio = projectData.actions.length / projectData.threats.length;
+            threatReduction *= Math.min(1.5, Math.max(0.5, actionThreatRatio)); // 0.5x to 1.5x multiplier
+            
+            // Adjust based on site condition
+            const conditionMultipliers = {
+                'pristine': 1.3,
+                'good': 1.1,
+                'moderate': 1.0,
+                'poor': 0.8,
+                'degraded': 0.6
+            };
+            threatReduction *= conditionMultipliers[projectData.condition] || 1.0;
+            
+            // Adjust based on protection status
+            const protectionMultipliers = {
+                'national': 1.3,
+                'state': 1.2,
+                'local': 1.1,
+                'private': 1.0,
+                'none': 0.9
+            };
+            threatReduction *= protectionMultipliers[projectData.protection] || 1.0;
+            
+            // Adjust based on user expertise
+            const userMultipliers = {
+                'government': 1.2,
+                'professional': 1.1,
+                'student': 1.0,
+                'community': 0.9
+            };
+            threatReduction *= userMultipliers[projectData.userLevel] || 1.0;
+
+            // Ensure within bounds
+            threatReduction = Math.max(5, Math.min(95, Math.round(threatReduction)));
+
+            // Calculate costs and timeframe
+            const totalCost = projectData.actions.reduce((sum, action) => sum + (action.cost || 0), 0);
+            const maxTimeframe = Math.max(...projectData.actions.map(action => action.time || 12), 12);
+
+            // Generate recommendations and visual data
+            const recommendations = generateRecommendations();
+            const visualData = generateDynamicVisualData(threatReduction);
+
+            // Store simulation results
+            projectData.simulation = {
+                threatReduction: threatReduction,
+                totalCost: totalCost,
+                timeframe: maxTimeframe,
+                recommendations: recommendations,
+                visualData: visualData,
+                generatedAt: new Date().toISOString()
+            };
+
+            // Update UI with results
+            updateSimulationResults();
+        }
+
+        function generateDynamicVisualData(threatReduction) {
+            if (projectData.threats.length === 0) return [];
+
+            // Sort threats by severity and take top 5
+            const mainThreats = [...projectData.threats]
+                .sort((a, b) => b.severity - a.severity)
+                .slice(0, 5);
+
+            return mainThreats.map(threat => {
+                const initialHeight = threat.severity * 15 + 10; // 25-85% based on severity 1-5
+                
+                // Calculate reduction for this specific threat
+                // Higher severity threats get less reduction, lower severity get more
+                const threatSpecificReduction = threatReduction * (1 - (threat.severity - 1) * 0.1);
+                const reducedHeight = initialHeight * (1 - threatSpecificReduction / 100);
+                
+                return {
+                    label: threat.name.split(' ')[0],
+                    initialHeight: initialHeight,
+                    reducedHeight: Math.max(5, reducedHeight), // Ensure minimum height
+                    color: getSeverityColor(threat.severity),
+                    reducedColor: '#2E8B57'
+                };
+            });
+        }
+
+        function updateSimulationResults() {
+            const sim = projectData.simulation;
+            if (!sim) return;
+
             // Format cost with thousands separator
             const formattedCost = new Intl.NumberFormat('en-AU', {
                 style: 'currency',
                 currency: 'AUD',
                 maximumFractionDigits: 0
-            }).format(totalCost);
-            
-            // Prepare results HTML
-            const results = `
-                <h4><i class="fas fa-chart-bar"></i> Simulation Results (5-year projection)</h4>
+            }).format(sim.totalCost);
+
+            const resultsHTML = `
+                <h4><i class="fas fa-chart-bar"></i> Simulation Results (${sim.timeframe}-month projection)</h4>
                 
                 <div class="simulation-visual">
                     <div class="visual-title">Threat Reduction Simulation</div>
-                    ${visualData.map((bar, i) => `
+                    ${sim.visualData.map((bar, i) => `
                         <div class="visual-bar" style="height: ${bar.initialHeight}%; left: ${30 + i*40}px; background-color: ${bar.color};"></div>
                         <div class="visual-label" style="left: ${30 + i*40}px;">${bar.label}</div>
                     `).join('')}
@@ -1877,107 +1989,48 @@
                     <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
                         <h5><i class="fas fa-biohazard"></i> Threats</h5>
                         <p><strong>Total Threats:</strong> ${projectData.threats.length}</p>
-                        <p><strong>Average Severity:</strong> ${avgSeverity.toFixed(1)}/5</p>
+                        <p><strong>Avg Severity:</strong> ${(projectData.threats.reduce((s,t) => s + t.severity, 0) / projectData.threats.length).toFixed(1)}/5</p>
                     </div>
                     
                     <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
                         <h5><i class="fas fa-tasks"></i> Actions</h5>
-                        <p><strong>Actions Selected:</strong> ${projectData.actions.length}</p>
-                        <p><strong>Average Effectiveness:</strong> ${avgEffectiveness.toFixed(1)}/5</p>
+                        <p><strong>Actions:</strong> ${projectData.actions.length}</p>
+                        <p><strong>Total Cost:</strong> ${formattedCost}</p>
                     </div>
                     
                     <div style="flex: 1; min-width: 200px; background: #f8f9fa; padding: 1rem; border-radius: 8px;">
                         <h5><i class="fas fa-chart-line"></i> Outcomes</h5>
-                        <p><strong>Threat Reduction:</strong> ${Math.round(effectiveness)}%</p>
-                        <p><strong>Timeframe:</strong> ${totalTime} months</p>
+                        <p><strong>Threat Reduction:</strong> ${sim.threatReduction}%</p>
+                        <p><strong>Timeframe:</strong> ${sim.timeframe} months</p>
                     </div>
                 </div>
                 
-                <div style="margin-top: 1rem;">
-                    <h5><i class="fas fa-money-bill-wave"></i> Financial Summary</h5>
-                    <p><strong>Total Estimated Cost:</strong> ${formattedCost}</p>
-                    <p><strong>Annual Cost:</strong> ${new Intl.NumberFormat('en-AU', {style: 'currency', currency: 'AUD', maximumFractionDigits: 0}).format(totalCost/(totalTime/12))}</p>
-                    <p><strong>Cost per Hectare:</strong> ${projectData.area > 0 ? new Intl.NumberFormat('en-AU', {style: 'currency', currency: 'AUD', maximumFractionDigits: 0}).format(totalCost/projectData.area) : 'N/A'}</p>
-                </div>
-                
-                <div style="margin-top: 1rem;">
-                    <h5><i class="fas fa-check-circle"></i> Overall Recommendation</h5>
-                    <p>${getRecommendationText(effectiveness)}</p>
-                </div>
-                
-                ${recommendations.length > 0 ? `
+                ${sim.recommendations.length > 0 ? `
                 <div style="margin-top: 1rem;">
                     <h5><i class="fas fa-clipboard-list"></i> Key Recommendations</h5>
                     <ul>
-                        ${recommendations.map(r => `<li>${r}</li>`).join('')}
+                        ${sim.recommendations.map(r => `<li>${r}</li>`).join('')}
                     </ul>
                 </div>
                 ` : ''}
-                
-                <div style="margin-top: 1rem;">
-                    <h5><i class="fas fa-arrow-right"></i> Next Steps</h5>
-                    <ul>
-                        <li>Consult with local NRM group for on-ground support</li>
-                        <li>Review Tasmanian Threatened Species List for area-specific concerns</li>
-                        ${projectData.userLevel === 'community' ? '<li>Consider engaging an ecological consultant for detailed planning</li>' : ''}
-                        <li>Explore funding opportunities through ${getFundingSources()}</li>
-                    </ul>
-                </div>
             `;
 
-            // Save simulation results
-            projectData.simulation = {
-                threatReduction: Math.round(effectiveness),
-                totalCost: totalCost,
-                timeframe: totalTime,
-                recommendations: recommendations,
-                visualData: visualData,
-                generatedAt: new Date().toISOString()
-            };
+            // Update both results and report preview
+            document.getElementById('simulationResults').innerHTML = resultsHTML;
+            document.getElementById('reportContent').innerHTML = resultsHTML;
             
-            // Show report preview
-            document.getElementById('reportOutput').style.display = 'block';
-            document.getElementById('reportContent').innerHTML = results;
-            
-            // Update results div
-            document.getElementById('simulationResults').innerHTML = results;
-            
-            // Animate the visual bars after they've been added to the DOM
+            // Animate the bars
             setTimeout(() => {
-                const bars = document.querySelectorAll('.visual-bar');
-                bars.forEach((bar, i) => {
-                    if (visualData[i]) {
+                document.querySelectorAll('.visual-bar').forEach((bar, i) => {
+                    if (sim.visualData[i]) {
                         setTimeout(() => {
-                            bar.style.height = `${visualData[i].reducedHeight}%`;
-                            bar.style.backgroundColor = visualData[i].reducedColor;
+                            bar.style.height = `${sim.visualData[i].reducedHeight}%`;
+                            bar.style.backgroundColor = sim.visualData[i].reducedColor;
                             bar.classList.add('reduced');
-                        }, i * 200);
+                        }, i * 300);
                     }
                 });
-            }, 100);
-            
-            showToast("Simulation completed successfully", "success");
-        }
-
-        function generateVisualData(totalSeverity, effectiveness) {
-            // Create visual bars for the main threats
-            const mainThreats = [...projectData.threats]
-                .sort((a, b) => b.severity - a.severity)
-                .slice(0, 5);
-            
-            return mainThreats.map(threat => {
-                const initialHeight = threat.severity * 15 + 10;
-                const reduction = (effectiveness / 100) * (threat.severity / 5);
-                const reducedHeight = initialHeight * (1 - reduction);
-                
-                return {
-                    label: threat.name.split(' ')[0], // First word
-                    initialHeight: initialHeight,
-                    reducedHeight: reducedHeight,
-                    color: getSeverityColor(threat.severity),
-                    reducedColor: '#2E8B57' // Green for reduced
-                };
-            });
+            }, 500);
         }
 
         function generateRecommendations() {
@@ -2037,27 +2090,10 @@
             return recommendations.slice(0, 5); // Return top 5
         }
 
-        function getRecommendationText(effectiveness) {
-            if (effectiveness > 75) {
-                return "Excellent plan likely to achieve significant threat reduction. Consider implementing as designed.";
-            } else if (effectiveness > 50) {
-                return "Good plan with substantial benefits expected. May benefit from additional actions for key threats.";
-            } else if (effectiveness > 30) {
-                return "Moderate impact expected. Consider adding more targeted actions for high severity threats.";
-            } else {
-                return "Limited impact projected. Review threat priorities and consider more effective actions.";
-            }
-        }
-
-        function getFundingSources() {
-            if (projectData.ecosystem === 'rainforest') {
-                return "Tasmanian Forest Conservation Fund or World Heritage grants";
-            } else if (projectData.ecosystem === 'coastal') {
-                return "Coastcare or Marine Conservation programs";
-            } else if (projectData.ecosystem === 'alpine') {
-                return "Alpine National Park funding or climate change adaptation grants";
-            } else {
-                return "NRM South/North, Landcare Australia, or Tasmanian Land Conservancy";
+        function refreshSimulationIfExists() {
+            if (projectData.simulation) {
+                // Re-run simulation with current data
+                runActualSimulation();
             }
         }
 

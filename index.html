@@ -2148,23 +2148,34 @@
             createManagementActions(doc, reportType);
 
             // ====== REPORT-SPECIFIC SECTIONS ======
-            switch(reportType) {
-                case 'basic':
-                    createBasicReportSections(doc);
-                    break;
-                case 'detailed':
-                    createDetailedReportSections(doc);
-                    break;
-                case 'funding':
-                    createFundingReportSections(doc);
-                    break;
-                case 'academic':
-                    createAcademicReportSections(doc);
-                    break;
-            }
+switch(reportType) {
+    case 'basic':
+        createBasicReportSections(doc);
+        // Add Tasmanian Context for basic reports
+        doc.addPage();
+        createTasmanianContext(doc, reportType);
+        break;
+    case 'detailed':
+        createDetailedReportSections(doc);
+        // Add Tasmanian Context for detailed reports  
+        doc.addPage();
+        createTasmanianContext(doc, reportType);
+        break;
+    case 'funding':
+        createFundingReportSections(doc);
+        // Add Tasmanian Context for funding reports
+        doc.addPage();
+        createTasmanianContext(doc, reportType);
+        break;
+    case 'academic':
+        createAcademicReportSections(doc);
+        // Add Tasmanian Context for academic reports
+        doc.addPage();
+        createTasmanianContext(doc, reportType);
+        break;
+}
 
-            // ====== TASMANIAN CONTEXT (ALL REPORT TYPES) ======
-            createTasmanianContext(doc, reportType);
+// REMOVE the standalone createTasmanianContext call that was here
 
             // ====== APPENDICES (DETAILED & ACADEMIC REPORTS) ======
             if (reportType === 'detailed' || reportType === 'academic') {

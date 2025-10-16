@@ -2251,12 +2251,15 @@ switch(reportType) {
             doc.text(`Date: ${new Date().toLocaleDateString('en-AU')}`, 105, 160, { align: 'center' });
             doc.text(`Location: Tasmania, Australia`, 105, 170, { align: 'center' });
             
-            // Logo/icon
+	/* THIS SECTION IS COMMENTED OUT:
+	// Logo/icon
             doc.setFillColor(46, 139, 87);
             doc.circle(105, 210, 20, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(24);
-            doc.text("🌿", 105, 214, { align: 'center' });
+         // doc.text("🌿", 105, 214, { align: 'center' }); (This line is commented out due to icon compatability issues with PDF)
+	*/
+
             
             // Confidentiality notice for funding proposals
             if (reportType === 'funding') {
@@ -2572,7 +2575,7 @@ switch(reportType) {
             let yPos = 45;
             doc.text(`Total Threats Identified: ${totalThreats}`, 20, yPos);
             doc.text(`Average Severity: ${avgSeverity}/5`, 20, yPos + 8);
-            doc.text(`High Severity Threats (≥4): ${highSeverity}`, 20, yPos + 16);
+            doc.text(`High Severity Threats (4 or higher): ${highSeverity}`, 20, yPos + 16);
             
             yPos += 30;
             
@@ -2743,6 +2746,7 @@ switch(reportType) {
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("5. Summary Recommendations", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -2823,6 +2827,7 @@ switch(reportType) {
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("5. Implementation Plan", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             let yPos = 45;
             doc.setFontSize(12);
@@ -2927,6 +2932,7 @@ switch(reportType) {
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("6. Budget Proposal", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             // Detailed budget table - FIXED: Convert all values to strings
             const budgetRows = projectData.actions.map(a => [
@@ -3054,6 +3060,7 @@ This project contributes to the protection and management of these important nat
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("6. Monitoring & Evaluation", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -3081,6 +3088,7 @@ Success will be measured against the projected ${projectData.simulation.threatRe
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("7. Budget Analysis", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -3107,6 +3115,7 @@ The budget represents a cost-effective investment in conservation, with funds al
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("8. Risk Assessment", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -3131,6 +3140,7 @@ The budget represents a cost-effective investment in conservation, with funds al
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("5. Project Justification", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -3158,6 +3168,7 @@ The investment represents excellent value for conservation outcomes, with measur
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("7. Evaluation Framework", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -3185,6 +3196,7 @@ Evaluation will occur at 6-month intervals with comprehensive reporting to stake
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("8. Organizational Capacity", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -3212,6 +3224,7 @@ We are well-positioned to deliver this project successfully and achieve the cons
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("5. Methodology", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -3239,6 +3252,7 @@ The methodology aligns with best practice in conservation planning and adaptive 
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("6. Results Analysis", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -3265,6 +3279,7 @@ These results demonstrate the potential for effective conservation intervention 
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("7. Discussion", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
@@ -3291,6 +3306,7 @@ These findings contribute to the growing body of evidence supporting strategic i
             doc.setFontSize(16);
             doc.setTextColor(46, 139, 87);
             doc.text("8. References", 20, 30);
+	    doc.line(20, 32, 60, 32);
             
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);

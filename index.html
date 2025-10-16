@@ -2225,6 +2225,7 @@ switch(reportType) {
             doc.setFontSize(24);
             doc.setFont(undefined, 'bold');
             doc.text("EcoSim", 105, 50, { align: 'center' });
+doc.setFont(undefined, 'normal');
             
             doc.setFontSize(18);
             doc.text("Tasmanian Environmental Management Tool", 105, 65, { align: 'center' });
@@ -2536,6 +2537,8 @@ switch(reportType) {
                 yPos = 30;
             }
             
+	    yPos += 10;
+
             doc.setFontSize(14);
             doc.setTextColor(46, 139, 87);
             doc.text("Ecological Context", 20, yPos);
